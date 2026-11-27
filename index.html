@@ -199,7 +199,8 @@
       <select class="field" id="sumLang">
         <option value="en">English</option>
         <option value="gu">Gujarati</option>
-        <option value="both">Both</option>
+        <option value="hi">Hindi</option>
+        <option value="both">English + Gujarati tags</option>
       </select>
       <label class="lbl" for="vocabIn">Special words (optional)</label>
       <input class="field" id="vocabIn" placeholder="Names and terms, e.g. Shastriji Maharaj, sanstha, mandal">
@@ -530,7 +531,7 @@ function parseJSON(raw){
 }
 function summaryPrompt(note, text){
   const sl = settings().sumLang;
-  const langLine = sl === 'gu' ? 'Write title, summary, key points and tags in Gujarati.' : sl === 'both' ? 'Write title, summary and key points in English. Give tags in English, and also give the same main topics in Gujarati in "tags_gu".' : 'Write title, summary, key points and tags in English, even though the talk may be in Gujarati or Hindi. Keep names of people and places as they are, spelled in English.';
+  const langLine = sl === 'gu' ? 'Write title, summary, key points and tags in Gujarati (Gujarati script).' : sl === 'hi' ? 'Write title, summary, key points and tags in Hindi (Devanagari script).' : sl === 'both' ? 'Write title, summary and key points in English. Give tags in English, and also give the same main topics in Gujarati in "tags_gu".' : 'Write title, summary, key points and tags in English, even though the talk may be in Gujarati or Hindi. Keep names of people and places as they are, spelled in English.';
   return `You organise recorded talks and presentations so they can be found later.
 File name: "${(note.fileName||note.title||'').replace(/"/g,"'")}"
 The transcript below was made by speech recognition and may contain mistakes. ${langLine}
@@ -552,11 +553,37 @@ function summaryFromRaw(raw){
   return { title: typeof obj.title==='string' ? obj.title.trim().slice(0,90) : '', summary: typeof obj.summary==='string' ? obj.summary.trim() : '', keyPoints: arr(obj.key_points).slice(0,12), tags: arr(obj.tags).slice(0,10).concat(arr(obj.tags_gu).slice(0,10)) };
 }
 function applySummary(n, r){
+  n.summaryLang = settings().sumLang === 'both' ? 'en' : settings().sumLang; n.alt = {}; n.sumView = null;
   if (r.title && !n.titleEdited) n.title = r.title;
   n.summary = r.summary; n.keyPoints = r.keyPoints;
   n.tags = n.tags.filter(t=>t.source!=='ai'); mergeTags(n, r.tags, 'ai');
   n.status = 'done'; n.error = null;
 }
+const SUM_LANGS = [['en','English'],['gu','ગુજરાતી'],['hi','हिन्दी']];
+const LANG_NAME = { en:'English', gu:'Gujarati (Gujarati script)', hi:'Hindi (Devanagari script)' };
+// Show the summary in another language: translate the existing summary (quick, uses little of the free allowance).
+async function translateSummary(n, lang){
+  const prompt = `Translate this summary of a talk into ${LANG_NAME[lang]}. Keep the meaning exactly, keep names of people and places, and use natural, respectful language suitable for a spiritual discourse.
+Return one JSON object: {"summary": "...", "key_points": ["...", "..."]} with the same number of key points.
+
+Summary:
+${n.summary}
+
+Key points:
+${(n.keyPoints||[]).map(k=>'- ' + k).join('\n')}`;
+  const raw = await generate([{text: prompt}], { responseMimeType:'application/json', maxOutputTokens: 3000 }, null, SUMMARY_MODELS);
+  const obj = parseJSON(raw);
+  return { summary: typeof obj.summary === 'string' ? obj.summary.trim() : '', keyPoints: Array.isArray(obj.key_points) ? obj.key_points.filter(x=>typeof x==='string') : [] };
+}
+async function showSummaryIn(n, lang){
+  n.sumView = lang; n.alt = n.alt || {};
+  if (lang === (n.summaryLang || 'en') || n.alt[lang]){ saveNote(n); refreshSheet(); return; }
+  working.set(n.id, {label: 'Writing the summary in ' + LANG_NAME[lang].split(' ')[0] + '…', pct:null}); refreshSheet();
+  try { n.alt[lang] = await translateSummary(n, lang); }
+  catch(e){ n.sumView = null; toast('Could not translate: ' + e.message, 5000); }
+  working.delete(n.id); await saveNote(n); refreshSheet();
+}
+
 async function summarise(note, progress){
   let text = (note.transcript || '').trim();
   if (text.length > 400000) text = text.slice(0, 400000);
@@ -908,7 +935,8 @@ const terms = ()=> query.toLowerCase().split(/\s+/).filter(Boolean);
 function matches(n, ts){
   if (activeTag && !n.tags.some(t=>t.name===activeTag)) return false;
   if (!ts.length) return true;
-  const hay = [n.title, n.fileName, n.summary, (n.keyPoints||[]).join(' '), n.tags.map(t=>t.name).join(' '), n.transcript].join(' \n ').toLowerCase();
+  const alt = Object.values(n.alt||{}).map(a=>a.summary + ' ' + (a.keyPoints||[]).join(' ')).join(' ');
+  const hay = [n.title, n.fileName, n.summary, alt, (n.keyPoints||[]).join(' '), n.tags.map(t=>t.name).join(' '), n.transcript].join(' \n ').toLowerCase();
   return ts.every(t => hay.includes(t));
 }
 function highlight(text, ts){
@@ -988,6 +1016,7 @@ function noteText(n){
   if (n.tags.length) L.push('Tags: ' + n.tags.map(t=>t.name).join(', '));
   if (n.summary) L.push('', 'SUMMARY', n.summary);
   if (n.keyPoints && n.keyPoints.length){ L.push('', 'KEY POINTS'); n.keyPoints.forEach(k=>L.push('- ' + k)); }
+  for (const [code, t] of Object.entries(n.alt||{})){ if (!t || !t.summary) continue; L.push('', 'SUMMARY (' + LANG_NAME[code].split(' ')[0] + ')', t.summary); (t.keyPoints||[]).forEach(k=>L.push('- ' + k)); }
   if (n.transcript) L.push('', 'TRANSCRIPT', n.transcript);
   return L.join('\n');
 }
@@ -1033,8 +1062,15 @@ async function refreshSheet(first){
 
   // summary
   const sum = h('div',{class:'sec'}, h('h4',null,'Summary'));
-  if (n.summary){ sum.append(h('div',null, highlight(n.summary, ts)));
-    if (n.keyPoints && n.keyPoints.length){ const ul = h('ul',{class:'kp'}); n.keyPoints.forEach(k=>ul.append(h('li',null, highlight(k, ts)))); sum.append(h('div',{style:'margin-top:10px;font-weight:600;font-size:14px'},'Key points'), ul); } }
+  if (n.summary){
+    const main = n.summaryLang || 'en', view = n.sumView || main;
+    const langRow = h('div',{class:'chips', style:'margin:0 0 8px'});
+    SUM_LANGS.forEach(([code, label])=> langRow.append(h('button',{class:'chip' + (view===code?' on':''), disabled: w ? true : null, onclick:()=>showSummaryIn(n, code)}, label)));
+    sum.append(langRow);
+    const shown = view === main ? { summary: n.summary, keyPoints: n.keyPoints } : ((n.alt||{})[view] || { summary: n.summary, keyPoints: n.keyPoints });
+    const kpLabel = { en:'Key points', gu:'મુખ્ય મુદ્દા', hi:'मुख्य बिंदु' }[view] || 'Key points';
+    sum.append(h('div',null, highlight(shown.summary, ts)));
+    if (shown.keyPoints && shown.keyPoints.length){ const ul = h('ul',{class:'kp'}); shown.keyPoints.forEach(k=>ul.append(h('li',null, highlight(k, ts)))); sum.append(h('div',{style:'margin-top:10px;font-weight:600;font-size:14px'}, kpLabel), ul); } }
   else sum.append(h('div',{class:'meta'}, w ? 'Coming once the transcript is ready.' : 'No summary yet.'));
   if (!w && n.transcript) sum.append(h('div',{class:'row', style:'margin-top:10px'}, h('button',{class:'btn small', onclick:()=>runSummary(n)}, n.summary ? 'Redo summary & tags' : 'Summarise & tag')));
   body.append(sum);
