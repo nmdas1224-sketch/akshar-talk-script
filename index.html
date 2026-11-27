@@ -516,12 +516,10 @@ function parseJSON(raw){
   if (s < 0 || e <= s) throw new Error('The summary came back in an unexpected form. Tap Summarise & tag to try again.');
   return JSON.parse(raw.slice(s, e+1));
 }
-async function summarise(note, progress){
-  let text = (note.transcript || '').trim();
-  if (text.length > 400000) text = text.slice(0, 400000);
+function summaryPrompt(note, text){
   const sl = settings().sumLang;
   const langLine = sl === 'gu' ? 'Write title, summary, key points and tags in Gujarati.' : sl === 'both' ? 'Write title, summary and key points in English. Give tags in English, and also give the same main topics in Gujarati in "tags_gu".' : 'Write title, summary, key points and tags in English, even though the talk may be in Gujarati or Hindi. Keep names of people and places as they are, spelled in English.';
-  const prompt = `You organise recorded talks and presentations so they can be found later.
+  return `You organise recorded talks and presentations so they can be found later.
 File name: "${(note.fileName||note.title||'').replace(/"/g,"'")}"
 The transcript below was made by speech recognition and may contain mistakes. ${langLine}
 
@@ -535,19 +533,29 @@ Transcript:
 """
 ${text}
 """`;
-  const raw = await generate([{text: prompt}], { responseMimeType:'application/json', maxOutputTokens: 4000 }, (w)=> progress && progress(`Gemini free limit reached, continuing in ${w}s…`));
+}
+function summaryFromRaw(raw){
   const obj = parseJSON(raw);
   const arr = (x)=> Array.isArray(x) ? x.filter(v=>typeof v==='string') : [];
   return { title: typeof obj.title==='string' ? obj.title.trim().slice(0,90) : '', summary: typeof obj.summary==='string' ? obj.summary.trim() : '', keyPoints: arr(obj.key_points).slice(0,12), tags: arr(obj.tags).slice(0,10).concat(arr(obj.tags_gu).slice(0,10)) };
+}
+function applySummary(n, r){
+  if (r.title && !n.titleEdited) n.title = r.title;
+  n.summary = r.summary; n.keyPoints = r.keyPoints;
+  n.tags = n.tags.filter(t=>t.source!=='ai'); mergeTags(n, r.tags, 'ai');
+  n.status = 'done'; n.error = null;
+}
+async function summarise(note, progress){
+  let text = (note.transcript || '').trim();
+  if (text.length > 400000) text = text.slice(0, 400000);
+  const raw = await generate([{text: summaryPrompt(note, text)}], { responseMimeType:'application/json', maxOutputTokens: 4000 }, (w)=> progress && progress(`Gemini free limit reached, continuing in ${w}s…`));
+  return summaryFromRaw(raw);
 }
 async function runSummary(n){
   working.set(n.id, {label:'Writing summary and tags…', pct:null}); render(); refreshSheet();
   try {
     const r = await summarise(n, (label)=>{ working.set(n.id, {label, pct:null}); render(); refreshSheet(); });
-    if (r.title && !n.titleEdited) n.title = r.title;
-    n.summary = r.summary; n.keyPoints = r.keyPoints;
-    n.tags = n.tags.filter(t=>t.source!=='ai'); mergeTags(n, r.tags, 'ai');
-    n.status = 'done'; n.error = null;
+    applySummary(n, r);
   } catch(e){ n.status = 'needs-summary'; n.error = 'Summary failed: ' + e.message; }
   working.delete(n.id); await saveNote(n); refreshSheet();
 }
@@ -628,10 +636,86 @@ async function keepAwake(on){
 document.addEventListener('visibilitychange', ()=>{
   if (document.visibilityState !== 'visible') return;
   if (running.size) keepAwake(true);
+  if ([...notes.values()].some(x=>x.status === 'cloud')) pollJobs();
   // pick up anything that stopped while the app was away
   for (const n of notes.values()) if (n.hasAudio && (n.status==='transcribing' || n.status==='queued') && !running.has(n.id) && !working.has(n.id) && settings().key){ working.set(n.id,{label:'Resuming…',pct:null}); enqueue(()=>transcribeNote(n)); }
   render();
 });
+
+/* ---------- background transcription on the server (Vercel) ---------- */
+let cloudOK = null;           // null = unknown, false = not set up on this site
+function makeSegs(n, total){
+  if (Array.isArray(n.segs) && n.segs.length && n.segTotal === Math.round(total)) return;
+  n.segs = [];
+  if (total > SEG * 1.25){ for (let a = 0; a < total; a += SEG) n.segs.push({ from: a, to: Math.min(Math.ceil(total), a + SEG), text:'', done:false }); }
+  else n.segs.push({ from: 0, to: Math.ceil(total), text:'', done:false, whole:true });
+  n.segTotal = Math.round(total);
+}
+async function startCloudJob(n, fileRef){
+  if (cloudOK === false || (n.cloudFails || 0) >= 2) return false;
+  const todo = n.segs.map((sg, i)=>({sg, i})).filter(x=>!x.sg.done);
+  if (!todo.length) return false;
+  const payload = {
+    key: settings().key, models: MODELS, file: { uri: fileRef.uri, mimeType: fileRef.mimeType },
+    sections: todo.map(({sg, i})=>({ i, from: sg.from, to: sg.to, prompt: sg.whole ? transcribePrompt(0) : rangePrompt(sg.from, sg.to) })),
+    known: n.segs.filter(sg=>sg.done).map(sg=>({ from: sg.from, to: sg.to, text: sg.text })),
+    summaryPrompt: summaryPrompt(n, '{{TRANSCRIPT}}')
+  };
+  let r;
+  try { r = await fetch('api/start', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); }
+  catch(e){ return false; }
+  if (r.status === 404 || r.status === 405 || r.status === 501){ cloudOK = false; return false; }
+  if (!r.ok) return false;
+  let j; try { j = await r.json(); } catch(e){ cloudOK = false; return false; }   // e.g. an HTML page: no server functions here
+  if (!j.id){ cloudOK = false; return false; }
+  cloudOK = true;
+  n.job = { id: j.id, at: Date.now() }; n.status = 'cloud'; n.error = null;
+  await saveNote(n);
+  schedulePoll(3000);
+  return true;
+}
+let pollTimer = null, polling = false;
+function schedulePoll(ms){ clearTimeout(pollTimer); pollTimer = setTimeout(pollJobs, ms); }
+async function pollJobs(){
+  if (polling) return; polling = true;
+  try {
+    const list = [...notes.values()].filter(n=>n.status === 'cloud' && n.job);
+    for (const n of list){
+      let res = null;
+      try { const r = await fetch('api/job?id=' + encodeURIComponent(n.job.id), {cache:'no-store'}); if (r.ok) res = await r.json(); } catch(e){}
+      if (!res || res.pending){
+        if (Date.now() - n.job.at > 7 * 60 * 1000){            // server job should finish within 5 minutes
+          n.job = null; n.cloudFails = (n.cloudFails || 0) + 1; n.status = 'transcribing'; await saveNote(n);
+          if (document.visibilityState === 'visible'){ working.set(n.id, {label:'Carrying on on the phone…', pct:null}); enqueue(()=>transcribeNote(n)); }
+        }
+        continue;
+      }
+      // merge finished sections
+      for (const sr of (res.sections || [])) if (typeof sr.text === 'string' && n.segs && n.segs[sr.i]){ n.segs[sr.i].text = sr.text; n.segs[sr.i].done = true; }
+      n.transcript = joinSegs(n);
+      const id = n.job.id; n.job = null;
+      fetch('api/job?id=' + encodeURIComponent(id), {method:'DELETE'}).catch(()=>{});
+      const missing = n.segs ? n.segs.filter(sg=>!sg.done).length : 1;
+      if (missing){
+        const errs = (res.sections || []).map(x=>x.error).filter(Boolean);
+        if (errs.some(e=>/key was not accepted/.test(e))){ n.status='error'; n.error = errs[0]; await saveNote(n); continue; }
+        n.status = 'transcribing'; await saveNote(n);
+        working.set(n.id, {label:`Continuing… ${n.segs.length - missing} of ${n.segs.length} sections done`, pct:null});
+        enqueue(()=>transcribeNote(n));           // sends the remaining sections as a new job
+        continue;
+      }
+      n.transcript = (n.transcript || '').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+      n.segs = null;
+      if (res.summaryText){ try { applySummary(n, summaryFromRaw(res.summaryText)); n.status = 'done'; await saveNote(n); refreshSheet(); continue; } catch(e){} }
+      n.status = 'summarising'; await saveNote(n);
+      runSummary(n);
+    }
+  } finally {
+    polling = false;
+    if ([...notes.values()].some(n=>n.status === 'cloud')) schedulePoll(document.visibilityState === 'visible' ? 8000 : 30000);
+    render(); refreshSheet();
+  }
+}
 
 async function getFileRef(n, blob, mime, set){
   if (n.file && n.file.uri && Date.now() - n.file.at < 40*3600*1000) return n.file;
@@ -657,12 +741,14 @@ async function transcribeNote(n){
     try { fileRef = await getFileRef(n, blob, mime, set); }
     catch(e){ if (e.badKey) throw e; if (e.network) throw e; fileRef = null; }
 
+    if (fileRef && total){
+      makeSegs(n, total);
+      set('Handing over to the server…', 0.2);
+      if (await startCloudJob(n, fileRef)){ running.delete(n.id); working.delete(n.id); render(); refreshSheet(); return; }
+    }
     if (fileRef && total && total > SEG * 1.25){
-      // Long talk: sections in parallel, each saved as soon as it is done.
-      if (!Array.isArray(n.segs) || !n.segs.length || n.segTotal !== Math.round(total)){
-        n.segs = []; for (let a = 0; a < total; a += SEG) n.segs.push({ from: a, to: Math.min(Math.ceil(total), a + SEG), text:'', done:false });
-        n.segTotal = Math.round(total);
-      }
+      // Long talk on the phone: sections in parallel, each saved as soon as it is done.
+      makeSegs(n, total);
       const doneCount = ()=> n.segs.filter(x=>x.done).length;
       const show = (extra)=> set(`Transcribing… ${doneCount()} of ${n.segs.length} sections done${extra||''}`, 0.15 + 0.85*doneCount()/n.segs.length);
       show();
@@ -834,6 +920,7 @@ function tagEl(t, onRemove){
 }
 function statusLine(n){
   const w = working.get(n.id);
+  if (!w && n.status === 'cloud') return h('div',{class:'status'}, '☁️ Transcribing on the server. You can close the app; it will be ready when you come back.');
   if (w){ const d = h('div'); d.append(h('div',{class:'status'}, w.label)); if (w.pct!=null) d.append(h('div',{class:'bar'}, h('i',{style:`width:${Math.round(w.pct*100)}%`}))); return d; }
   if (n.error) return h('div',{class:'status err'}, n.error);
   if (n.status==='transcribing' || n.status==='queued') return h('div',{class:'status'}, 'Paused · carries on when the app is open' + (n.segs ? ` (${n.segs.filter(x=>x.done).length} of ${n.segs.length} sections done)` : ''));
@@ -913,8 +1000,8 @@ async function refreshSheet(first){
       idb.get('audio', n.id).then(b=>{ if (b){ audioURL = URL.createObjectURL(b); au.src = audioURL; } }).catch(()=>{}); }
   }
   const stBox = h('div',{id:'sheetStatus', style:'margin-top:8px'}); const st = statusLine(n); if (st) stBox.append(st); head.append(stBox);
-  if (w) head.append(h('div',{class:'note'},'The screen stays on while this runs. If you leave the app, it carries on from where it stopped when you come back.'));
-  if (!w && n.hasAudio){ const done = n.status === 'done' || n.status === 'needs-summary'; head.append(h('div',{class:'row', style:'margin-top:10px'}, h('button',{class:'btn small' + (done?'':' primary'), onclick:async()=>{ if (done && !(await confirmBox('Transcribe this again? The current transcript and summary will be replaced.'))) return; if (done){ n.status = 'queued'; n.segs = null; } working.set(n.id,{label:'Waiting…',pct:0}); refreshSheet(); enqueue(()=>transcribeNote(n)); }}, done ? 'Transcribe again' : 'Transcribe'))); }
+  if (w) head.append(h('div',{class:'note'},'Keep the app open until the upload finishes. After that the server takes over and you can close the app.'));
+  if (!w && n.hasAudio && n.status !== 'cloud'){ const done = n.status === 'done' || n.status === 'needs-summary'; head.append(h('div',{class:'row', style:'margin-top:10px'}, h('button',{class:'btn small' + (done?'':' primary'), onclick:async()=>{ if (done && !(await confirmBox('Transcribe this again? The current transcript and summary will be replaced.'))) return; if (done){ n.status = 'queued'; n.segs = null; } working.set(n.id,{label:'Waiting…',pct:0}); refreshSheet(); enqueue(()=>transcribeNote(n)); }}, done ? 'Transcribe again' : 'Transcribe'))); }
   body.append(head);
 
   // tags
@@ -1023,6 +1110,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   render(); checkKeyBanner(); showInstallBanner();
   // resume anything that was interrupted
   for (const n of notes.values()) if (n.hasAudio && (n.status==='queued' || n.status==='transcribing') && settings().key){ working.set(n.id,{label:'Resuming…',pct:0}); enqueue(()=>transcribeNote(n)); }
+  if ([...notes.values()].some(n=>n.status === 'cloud')) pollJobs();
   render();
 })();
 })();
