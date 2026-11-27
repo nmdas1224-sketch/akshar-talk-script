@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Akshar Talk">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Akshar Talk Script</title>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg:#0a0a0a; --card:#161412; --ink:#f6efe3; --muted:#a89e8f; --line:#2e2a25;
+    --accent:#ff8a1f; --accent-ink:#140a00; --accent-soft:#33200d;
+    --gold:#e2b23e; --gold-soft:#2f2610;
+    --file:#e2b23e; --file-soft:#2f2610; --manual:#f6efe3; --manual-soft:#2b2825;
+    --danger:#ff6b5a; --danger-soft:#3a1714; --radius:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:760px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px calc(90px + env(safe-area-inset-bottom))}
+  header{display:flex;align-items:center;gap:10px}
+  header h1{font-size:23px;margin:0;letter-spacing:-.01em;flex:1;color:var(--gold);line-height:1.15}
+  header h1 small{display:block;font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .logo{height:52px;width:auto;flex:none}
+  .iconbtn{border:1px solid var(--line);background:var(--card);border-radius:12px;width:42px;height:42px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .sub{margin:2px 0 0;color:var(--muted);font-size:14px}
+  .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 8px}
+  .btn{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px 14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;text-align:center}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.rec{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn.small{padding:8px 12px;font-size:14px;font-weight:500;border-radius:10px}
+  .btn.danger{color:var(--danger)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .linkbtn{background:none;border:0;color:var(--accent);cursor:pointer;padding:6px 0;font-size:14px;font-weight:600}
+  .search{position:relative;margin:10px 0}
+  .search input{width:100%;padding:12px 14px 12px 40px;border:1px solid var(--line);border-radius:12px;background:var(--card);-webkit-appearance:none}
+  .search svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);opacity:.55}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+  .chip .n{opacity:.6;margin-left:4px}
+  .tag{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font-size:13px;background:var(--accent-soft);color:var(--accent);margin:0 4px 5px 0;cursor:pointer}
+  .tag.file{background:var(--file-soft);color:var(--file)}
+  .tag.manual{background:var(--manual-soft);color:var(--manual)}
+  .tag .x{border:0;background:none;color:inherit;cursor:pointer;padding:0 0 0 4px;font-size:17px;line-height:1;opacity:.7}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;cursor:pointer}
+  .card h3{margin:0 0 2px;font-size:16.5px}
+  .meta{color:var(--muted);font-size:13px}
+  .card .sum{margin:6px 0 8px;font-size:14.5px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .snip{font-size:13.5px;color:var(--muted);margin:0 0 8px}
+  mark{background:var(--accent);color:#140a00;border-radius:3px;padding:0 1px}
+  .status{font-size:13px;color:var(--accent);font-weight:600}
+  .status.err{color:var(--danger)}
+  .bar{height:5px;border-radius:9px;background:var(--line);overflow:hidden;margin:8px 0 4px}
+  .bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+  .empty{text-align:center;color:var(--muted);padding:36px 12px;border:1.5px dashed var(--line);border-radius:var(--radius)}
+  .note{font-size:13px;color:var(--muted);margin:6px 0 0}
+  .banner{border-radius:12px;padding:11px 13px;font-size:14px;margin:8px 0;background:var(--file-soft);color:var(--file)}
+  .banner.err{background:var(--danger-soft);color:var(--danger)}
+  .banner.info{background:var(--accent-soft);color:var(--accent)}
+  .banner b{font-weight:700}
+  .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+  .hidden{display:none!important}
+  /* recorder */
+  .recpanel{background:var(--card);border:2px solid var(--accent);border-radius:var(--radius);padding:16px;margin:8px 0}
+  .rectime{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em;text-align:center}
+  .meter{height:8px;background:var(--line);border-radius:9px;overflow:hidden;margin:8px 0 14px}
+  .meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .08s}
+  .recdot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);animation:pulse 1.2s infinite;margin-right:6px}
+  .paused .recdot{animation:none;opacity:.35}
+  @keyframes pulse{50%{opacity:.2}}
+  /* sheets / modals */
+  .sheet{position:fixed;inset:0;background:var(--bg);z-index:20;display:none;flex-direction:column}
+  .sheet.open{display:flex}
+  .sheet-head{display:flex;align-items:center;gap:8px;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;border-bottom:1px solid var(--line);background:var(--card)}
+  .sheet-head .title{flex:1;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .sheet-body{overflow-y:auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom));flex:1;max-width:760px;width:100%;margin:0 auto;-webkit-overflow-scrolling:touch}
+  .sec{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 15px;margin-bottom:12px}
+  .sec h4{margin:0 0 8px;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  .titleinput{width:100%;font-size:20px;font-weight:700;border:0;background:transparent;padding:2px 0;outline:none}
+  .titleinput:focus{border-bottom:1.5px solid var(--accent)}
+  audio{width:100%;margin-top:10px}
+  .transcript{white-space:pre-wrap;font-size:15px}
+  .transcript.clamp{max-height:260px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 70%,transparent)}
+  textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .addtag{display:flex;gap:6px;margin-top:8px}
+  .field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);-webkit-appearance:none}
+  .addtag input{flex:1;min-width:0}
+  ul.kp{margin:6px 0 0;padding-left:20px}
+  ul.kp li{margin:3px 0}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+  label.lbl{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:40;padding:20px}
+  .modal.open{display:flex}
+  .modal .box{background:var(--card);border-radius:16px;padding:18px;max-width:400px;width:100%;max-height:90vh;overflow:auto}
+  .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 14px;border-radius:10px;font-size:14px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  ol.steps{margin:6px 0;padding-left:20px}ol.steps li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="logo" src="logo.png" alt="">
+    <h1><small>Akshar</small>Talk Script</h1>
+    <button class="iconbtn" id="setBtn" aria-label="Settings">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7 7 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.7 8.48a.5.5 0 0 0 .12.64l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.61.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.48 0 .61-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/></svg>
+    </button>
+  </header>
+  <p class="sub">Record or upload katha and talks. Get the Gujarati transcript, a summary and tags, then search everything.</p>
+
+  <div id="errBox" class="banner err hidden"></div>
+  <div id="keyBanner" class="banner info hidden"></div>
+  <div id="installBanner" class="banner info hidden"></div>
+
+  <!-- recorder panel -->
+  <div id="recPanel" class="recpanel hidden">
+    <div class="meta" style="text-align:center"><span class="recdot"></span><span id="recState">Recording</span> · <span id="recSrc">Microphone</span></div>
+    <div class="rectime" id="recTime">0:00</div>
+    <div class="meter"><i id="recMeter"></i></div>
+    <div class="row" style="justify-content:center">
+      <button class="btn small" id="recPause">Pause</button>
+      <button class="btn small primary" id="recStop">Stop &amp; transcribe</button>
+      <button class="btn small danger" id="recCancel">Discard</button>
+    </div>
+    <p class="note" style="text-align:center">Keep the app open and the screen on while recording.</p>
+  </div>
+
+  <div class="actions" id="actions">
+    <button class="btn rec" id="recBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+      Record
+    </button>
+    <label class="btn" for="fileIn" id="upBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 16V7.83l-3.59 3.58L6 10l6-6 6 6-1.41 1.41L13 7.83V16h-2Zm-7 4v-6h2v4h12v-4h2v6H4Z"/></svg>
+      Upload audio
+    </label>
+  </div>
+  <input type="file" id="fileIn" class="vh" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.oga,.opus,.webm,.flac,.mp4,.mpeg,.mpga" multiple>
+  <div class="row" style="justify-content:space-between">
+    <button class="linkbtn" id="tabBtn" hidden>+ Capture audio from a browser tab</button>
+    <button class="linkbtn" id="pasteBtn">+ Paste a transcript</button>
+  </div>
+
+  <div class="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5Zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14Z"/></svg>
+    <input id="q" type="search" placeholder="Search transcripts, summaries and tags" autocomplete="off">
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="row" style="justify-content:space-between;margin-bottom:8px"><div class="meta" id="count"></div><button class="linkbtn hidden" id="dlAll">Download all</button></div>
+  <div class="list" id="list"></div>
+</div>
+
+<!-- detail sheet -->
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="sheet-head">
+    <button class="btn small" id="backBtn">← Back</button>
+    <div class="title" id="sheetTitle"></div>
+  </div>
+  <div class="sheet-body" id="sheetBody"></div>
+</div>
+
+<!-- settings sheet -->
+<div class="sheet" id="settings" role="dialog" aria-modal="true">
+  <div class="sheet-head">
+    <button class="btn small" id="setBack">← Back</button>
+    <div class="title">Settings</div>
+  </div>
+  <div class="sheet-body">
+    <div class="sec">
+      <h4>Google Gemini key</h4>
+      <p class="note" style="margin-top:0">Gemini writes the transcripts, summaries and tags. It's free with a Google account.</p>
+      <ol class="steps meta">
+        <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> and sign in.</li>
+        <li>Tap <b>Create API key</b>, then copy it.</li>
+        <li>Paste it below and tap <b>Save</b>.</li>
+      </ol>
+      <label class="lbl" for="keyIn">API key</label>
+      <input class="field" id="keyIn" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your Gemini API key">
+      <label class="lbl" for="langSel">Language of the talks</label>
+      <select class="field" id="langSel">
+        <option value="gu">Mostly Gujarati (with Hindi / English)</option>
+        <option value="hi">Mostly Hindi (with English)</option>
+        <option value="en">English</option>
+        <option value="auto">Any language</option>
+      </select>
+      <label class="lbl" for="sumLang">Summary and tags in</label>
+      <select class="field" id="sumLang">
+        <option value="en">English</option>
+        <option value="gu">Gujarati</option>
+        <option value="both">Both</option>
+      </select>
+      <label class="lbl" for="vocabIn">Special words (optional)</label>
+      <input class="field" id="vocabIn" placeholder="Names and terms, e.g. Shastriji Maharaj, sanstha, mandal">
+      <p class="note">Helps the transcript spell names and terms correctly.</p>
+      <div class="row" style="margin-top:12px"><button class="btn small primary" id="saveSet">Save</button><button class="btn small" id="testKey">Test key</button></div>
+      <p class="note">Your key stays on this phone. Audio is sent to Google Gemini to be transcribed.</p>
+    </div>
+    <div class="sec">
+      <h4>Recording</h4>
+      <label class="row" style="gap:10px;font-size:15px"><input type="checkbox" id="roomMode"> Room / speaker mode</label>
+      <p class="note">Turns off echo cancelling and noise suppression so sound from a loudspeaker or another device is picked up. Leave off for one person speaking into the phone.</p>
+    </div>
+    <div class="sec">
+      <h4>Backup</h4>
+      <p class="note" style="margin-top:0">Everything is stored on this device. Save a backup now and then.</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn small" id="backupBtn">Download backup (text only)</button>
+        <label class="btn small" for="restoreIn">Restore backup</label>
+      </div>
+      <input type="file" id="restoreIn" class="vh" accept=".json,application/json">
+      <p class="note" id="storageInfo"></p>
+    </div>
+    <div class="sec">
+      <h4>Add to home screen</h4>
+      <div id="installHelp"></div>
+    </div>
+  </div>
+</div>
+
+<!-- paste modal -->
+<div class="modal" id="pasteModal">
+  <div class="box">
+    <h3 style="margin:0 0 8px">Paste a transcript</h3>
+    <input class="field" id="pasteTitle" placeholder="Title or file name (used for tags)" style="margin-bottom:8px">
+    <textarea id="pasteText" placeholder="Paste the text of the talk here"></textarea>
+    <div class="row" style="justify-content:flex-end;margin-top:10px">
+      <button class="btn small" id="pasteCancel">Cancel</button>
+      <button class="btn small primary" id="pasteSave">Save &amp; tag</button>
+    </div>
+  </div>
+</div>
+
+<!-- confirm modal -->
+<div class="modal" id="confirmModal">
+  <div class="box">
+    <p id="confirmMsg" style="margin:0 0 14px"></p>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn small" id="confirmNo">Cancel</button>
+      <button class="btn small danger" id="confirmYes">Yes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showErr(msg){ try{ var b=document.getElementById('errBox'); b.textContent='Something went wrong: '+msg; b.classList.remove('hidden'); }catch(e){} }
+window.addEventListener('error', function(e){ showErr(e.message || 'unknown error'); });
+window.addEventListener('unhandledrejection', function(e){ var r=e.reason; showErr((r && r.message) || String(r)); });
+
+(function(){
+"use strict";
+
+/* ================= helpers ================= */
+const $ = (id) => document.getElementById(id);
+function h(tag, props, ...kids){
+  const el = document.createElement(tag);
+  if (props) for (const k in props){ const v = props[k]; if (v == null || v === false) continue;
+    if (k === 'class') el.className = v; else if (k === 'text') el.textContent = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else el.setAttribute(k, v === true ? '' : v); }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+function toast(msg, ms){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms||2800); }
+function fmtDur(s){ if(s==null||isNaN(s)) return ''; s=Math.round(s); const hh=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return hh? `${hh}:${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}` : `${m}:${String(x).padStart(2,'0')}`; }
+function fmtDate(t){ try{ return new Date(t).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+function fmtMB(b){ return (b/1048576).toFixed(b>10485760?0:1) + ' MB'; }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function confirmBox(msg){ return new Promise(res=>{ $('confirmMsg').textContent=msg; const m=$('confirmModal'); m.classList.add('open');
+  const done=(v)=>{ m.classList.remove('open'); $('confirmYes').onclick=$('confirmNo').onclick=null; res(v); };
+  $('confirmYes').onclick=()=>done(true); $('confirmNo').onclick=()=>done(false); }); }
+function download(filename, blob){
+  const url = URL.createObjectURL(blob);
+  const a = h('a', {href:url, download:filename}); document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 30000);
+}
+async function shareOrDownload(filename, text){
+  const blob = new Blob([text], {type:'text/plain'});
+  try {
+    const file = new File([blob], filename, {type:'text/plain'});
+    if (navigator.canShare && navigator.canShare({files:[file]}) && /iPhone|iPad|Android/i.test(navigator.userAgent)){ await navigator.share({files:[file], title: filename}); return; }
+  } catch(e){ if (e && e.name === 'AbortError') return; }
+  download(filename, blob);
+}
+
+/* ================= settings ================= */
+const LS = { get(k,d){ try{ const v = localStorage.getItem('tl.'+k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem('tl.'+k, v); }catch(e){} } };
+const MODELS = ['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-flash-latest','gemini-2.5-flash'];
+const BASE = 'https://generativelanguage.googleapis.com';
+function settings(){ return { key: LS.get('key_gemini',''), lang: LS.get('glang','gu'), sumLang: LS.get('sumLang','en'), vocab: LS.get('vocab',''), room: LS.get('room','1')==='1' }; }
+function loadSettingsUI(){ const s = settings(); $('keyIn').value = s.key; $('langSel').value = s.lang; $('sumLang').value = s.sumLang; $('vocabIn').value = s.vocab; $('roomMode').checked = s.room; }
+$('saveSet').onclick = ()=>{
+  LS.set('key_gemini', $('keyIn').value.trim()); LS.set('glang', $('langSel').value); LS.set('sumLang', $('sumLang').value); LS.set('vocab', $('vocabIn').value.trim());
+  toast('Saved'); checkKeyBanner();
+};
+$('roomMode').onchange = ()=> LS.set('room', $('roomMode').checked ? '1' : '0');
+$('testKey').onclick = async ()=>{
+  $('saveSet').click();
+  try { const t = await generate([{text:'Reply with the single word OK.'}], {maxOutputTokens: 20}); toast(t ? 'Key works ✓' : 'No reply', 3500); }
+  catch(e){ toast(e.message, 6000); }
+};
+function checkKeyBanner(){
+  const b = $('keyBanner');
+  if (settings().key){ b.classList.add('hidden'); return; }
+  b.textContent=''; b.append(h('b',null,'One-time setup: '), 'add your free Google Gemini key in ', h('a',{href:'#', onclick:(e)=>{ e.preventDefault(); openSettings(); }}, 'Settings'), ' so the app can transcribe.');
+  b.classList.remove('hidden');
+}
+
+/* ================= Gemini API ================= */
+function needKey(){ const k = settings().key; if (!k) throw new Error('Add your Gemini API key in Settings first.'); return k; }
+async function gfetch(url, init){
+  try { return await fetch(url, init); }
+  catch(e){ const x = new Error('Connection to Gemini was interrupted (the app may have been in the background). It will carry on.'); x.network = true; throw x; }
+}
+async function gError(r){
+  let msg = '', retry = 0, zero = false;
+  try { const j = await r.json(); msg = (j.error && j.error.message) || '';
+    for (const d of ((j.error && j.error.details) || [])){ if (d.retryDelay) retry = parseFloat(d.retryDelay) || 0; }
+    zero = /limit: 0\b/.test(msg); } catch(e){}
+  const e = new Error(
+    r.status === 400 && /API key not valid|API_KEY_INVALID/i.test(msg) ? 'Your Gemini key was not accepted. Check it in Settings.' :
+    r.status === 403 ? 'Gemini refused the request: ' + (msg || 'permission denied') :
+    r.status === 429 ? 'Gemini free limit reached. ' + (retry ? `Try again in ${Math.ceil(retry)} seconds.` : 'Try again in a minute.') :
+    'Gemini error ' + r.status + (msg ? ': ' + msg.slice(0, 200) : ''));
+  e.status = r.status; e.retry = retry; e.zero = zero; e.badKey = /not accepted/.test(e.message);
+  return e;
+}
+let goodModel = null; const noThink = new Set();
+// One generateContent call, trying the models in order and waiting out short rate limits.
+async function generateRaw(contents, cfg, onWait){
+  const key = needKey();
+  const models = goodModel ? [goodModel, ...MODELS.filter(m=>m!==goodModel)] : MODELS;
+  let lastErr = null;
+  for (const model of models){
+    for (let attempt = 0; attempt < 4; attempt++){
+      const gc = Object.assign({ temperature: 0 }, cfg || {});
+      if (!noThink.has(model)) gc.thinkingConfig = { thinkingLevel: 'low' };
+      const r = await gfetch(`${BASE}/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ contents, generationConfig: gc }) });
+      if (r.ok){
+        const j = await r.json(); goodModel = model;
+        const c = (j.candidates || [])[0] || {};
+        const text = ((c.content && c.content.parts) || []).map(p=>p.text || '').join('');
+        if (!text && (c.finishReason === 'SAFETY' || c.finishReason === 'RECITATION' || (j.promptFeedback && j.promptFeedback.blockReason))) throw new Error('Gemini declined to transcribe this audio (' + (c.finishReason || j.promptFeedback.blockReason) + ').');
+        return { text, finish: c.finishReason || '' };
+      }
+      const e = await gError(r); lastErr = e;
+      if (e.badKey) throw e;
+      if (r.status === 400 && /thinking/i.test(e.message) && !noThink.has(model)){ noThink.add(model); attempt--; continue; }
+      if ((r.status === 403 || r.status === 404 || r.status === 400) && /file/i.test(e.message) && /not found|expired|permission|does not exist/i.test(e.message)){ e.fileGone = true; throw e; }
+      if (r.status === 429 && !e.zero && attempt < 3){ const w = Math.min(70, Math.ceil(e.retry || 20)); onWait && onWait(w); await sleep(w*1000); continue; }
+      if (r.status === 429 && !e.zero) throw e;
+      if (r.status >= 500 && attempt < 2){ await sleep(4000*(attempt+1)); continue; }
+      break;  // model not available on this key (404/400/403/limit 0): try the next one
+    }
+  }
+  throw lastErr || new Error('Gemini is not available right now.');
+}
+async function generate(parts, cfg, onWait){ return (await generateRaw([{role:'user', parts}], cfg, onWait)).text; }
+
+// Upload audio with the Files API (works for files of any size up to 2 GB).
+async function uploadFile(blob, mime, name, onProgress){
+  const key = needKey();
+  const start = await gfetch(`${BASE}/upload/v1beta/files?key=${encodeURIComponent(key)}`, {
+    method:'POST',
+    headers:{ 'X-Goog-Upload-Protocol':'resumable', 'X-Goog-Upload-Command':'start', 'X-Goog-Upload-Header-Content-Length': String(blob.size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type':'application/json' },
+    body: JSON.stringify({ file: { display_name: (name || 'audio').slice(0, 100) } }) });
+  if (!start.ok) throw await gError(start);
+  const url = start.headers.get('x-goog-upload-url');
+  if (!url) throw new Error('UPLOAD_URL_HIDDEN');
+  const info = await new Promise((res, rej)=>{
+    const x = new XMLHttpRequest(); x.open('POST', url);
+    x.setRequestHeader('X-Goog-Upload-Offset','0'); x.setRequestHeader('X-Goog-Upload-Command','upload, finalize');
+    x.upload.onprogress = (e)=>{ if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    x.onload = ()=>{ if (x.status >= 200 && x.status < 300){ try { res(JSON.parse(x.responseText)); } catch(e){ rej(new Error('Upload reply not understood')); } } else rej(new Error('Upload failed (' + x.status + ')')); };
+    x.onerror = ()=> rej(new Error('Upload failed. Check your connection.'));
+    x.send(blob);
+  });
+  let f = info.file || info;
+  for (let i = 0; i < 60 && f.state && f.state !== 'ACTIVE'; i++){
+    if (f.state === 'FAILED') throw new Error('Gemini could not process this audio file.');
+    await sleep(3000);
+    const r = await gfetch(`${BASE}/v1beta/${f.name}?key=${encodeURIComponent(key)}`);
+    if (r.ok) f = await r.json();
+  }
+  return f;
+}
+function blobToBase64(blob){ return new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=> res(String(r.result).split(',')[1]); r.onerror = ()=> rej(r.error); r.readAsDataURL(blob); }); }
+function geminiMime(blob, name){
+  const ext = extFor(blob.type, name);
+  return ({ m4a:'audio/m4a', mp4:'audio/m4a', aac:'audio/aac', mp3:'audio/mp3', mpeg:'audio/mpeg', mpga:'audio/mpeg', wav:'audio/wav', ogg:'audio/ogg', oga:'audio/ogg', opus:'audio/ogg', webm:'audio/webm', flac:'audio/flac', aiff:'audio/aiff' })[ext] || (blob.type || 'audio/mpeg').split(';')[0];
+}
+function langInstruction(){
+  const l = settings().lang;
+  if (l === 'gu') return 'The speech is mostly Gujarati, with some Hindi and English. Write Gujarati in Gujarati script, Hindi in Devanagari, and English words in English (Latin letters).';
+  if (l === 'hi') return 'The speech is mostly Hindi, with some English. Write Hindi in Devanagari and English words in English (Latin letters).';
+  if (l === 'en') return 'The speech is in English.';
+  return 'Write each language in its own script.';
+}
+function transcribePrompt(fromSec){
+  const v = settings().vocab;
+  return `Transcribe this audio exactly as spoken, word for word, from ${fromSec ? 'timestamp ' + fmtDur(fromSec) : 'the very beginning'} to the very end. ${langInstruction()}
+Do not translate, summarise, shorten or skip anything. Do not repeat yourself. If a part is unclear, write [unclear]. Mark long music, chanting or silence as [music] or [silence] instead of writing words for it.
+Start a new paragraph about every minute, beginning each paragraph with its timestamp in square brackets, like [12:34].${v ? '\nNames and terms that may be spoken: ' + v + '.' : ''}
+Output only the transcript.`;
+}
+function lastStamp(text){ const m = [...text.matchAll(/\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]/g)].pop(); if (!m) return 0; return m[3] ? (+m[1])*3600+(+m[2])*60+(+m[3]) : (+m[1])*60+(+m[2]); }
+/* ================= audio prep ================= */
+function extFor(type, name){
+  const m = (name||'').match(/\.([a-z0-9]{2,5})$/i); if (m) return m[1].toLowerCase();
+  if (/webm/.test(type)) return 'webm'; if (/ogg/.test(type)) return 'ogg'; if (/mp4|m4a|aac/.test(type)) return 'm4a'; if (/mpeg|mp3/.test(type)) return 'mp3'; if (/wav/.test(type)) return 'wav';
+  return 'webm';
+}
+async function decodeTo16k(blob){
+  const buf = await blob.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AC(); let dec;
+  try { dec = await new Promise((res,rej)=>{ const p = ctx.decodeAudioData(buf, res, rej); if (p && p.then) p.then(res, rej); }); }
+  finally { try{ ctx.close(); }catch(e){} }
+  const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const off = new OAC(1, Math.ceil(dec.duration * 16000), 16000);
+  const src = off.createBufferSource(); src.buffer = dec; src.connect(off.destination); src.start(0);
+  const out = await off.startRendering();
+  return { pcm: out.getChannelData(0), duration: dec.duration };
+}
+function wavBlob(pcm, start, end){
+  const n = end - start, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const w = (o,s)=>{ for (let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36+n*2, true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+  v.setUint32(24,16000,true); v.setUint32(28,32000,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+  let o = 44; for (let i=start;i<end;i++,o+=2){ let x = pcm[i]; x = x<-1?-1:x>1?1:x; v.setInt16(o, x<0?x*0x8000:x*0x7fff, true); }
+  return new Blob([buf], {type:'audio/wav'});
+}
+// Cut at quiet moments, pieces of ~9-10 minutes (16 kHz mono WAV ≈ 18 MB each).
+function splitPoints(pcm, minS, maxS){
+  const SR = 16000, minLen = (minS||540)*SR, maxLen = (maxS||600)*SR, frame = Math.floor(0.1*SR), pts = [];
+  let s = 0;
+  while (s < pcm.length){
+    if (pcm.length - s <= maxLen){ pts.push([s, pcm.length]); break; }
+    let best = s + maxLen, bestE = Infinity;
+    for (let f = s + minLen; f + frame <= s + maxLen; f += frame){ let e = 0; for (let i=f;i<f+frame;i+=4) e += pcm[i]*pcm[i]; if (e < bestE){ bestE = e; best = f + (frame>>1); } }
+    pts.push([s, best]); s = best;
+  }
+  return pts;
+}
+function mediaDuration(blob){
+  return new Promise(res=>{ const a = document.createElement('audio'); const u = URL.createObjectURL(blob); let done=false;
+    const fin=(d)=>{ if(done) return; done=true; URL.revokeObjectURL(u); res(isFinite(d)&&d>0?d:null); };
+    a.preload='metadata'; a.onloadedmetadata=()=>{ if (a.duration===Infinity){ a.currentTime=1e7; a.ontimeupdate=()=>{ a.ontimeupdate=null; fin(a.duration); }; } else fin(a.duration); };
+    a.onerror=()=>fin(null); setTimeout(()=>fin(null), 6000); a.src=u; });
+}
+
+/* ================= storage (IndexedDB on this device) ================= */
+const idb = {
+  _db:null,
+  open(){ if (this._db) return this._db; this._db = new Promise((res,rej)=>{ const r=indexedDB.open('talk-library',1);
+    r.onupgradeneeded=()=>{ r.result.createObjectStore('notes'); r.result.createObjectStore('audio'); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); return this._db; },
+  async run(store, mode, fn){ const db = await this.open(); return new Promise((res,rej)=>{ const t=db.transaction(store,mode); const r=fn(t.objectStore(store)); t.oncomplete=()=>res(r && r.result); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error||new Error('Storage aborted')); }); },
+  put(s,k,v){ return this.run(s,'readwrite',st=>st.put(v,k)); },
+  get(s,k){ return this.run(s,'readonly',st=>st.get(k)); },
+  del(s,k){ return this.run(s,'readwrite',st=>st.delete(k)); },
+  async all(s){ const db=await this.open(); return new Promise((res,rej)=>{ const out=[]; const t=db.transaction(s,'readonly'); const c=t.objectStore(s).openCursor(); c.onsuccess=()=>{ const cur=c.result; if(cur){ out.push(cur.value); cur.continue(); } }; t.oncomplete=()=>res(out); t.onerror=()=>rej(t.error); }); }
+};
+const notes = new Map();
+const working = new Map();
+async function saveNote(n){
+  n.updatedAt = Date.now(); notes.set(n.id, n); render();
+  try { await idb.put('notes', n.id, JSON.parse(JSON.stringify(n))); }
+  catch(e){ toast('Could not save. Your phone may be out of storage.', 4000); }
+}
+async function deleteNote(n){ notes.delete(n.id); render(); try{ await idb.del('notes', n.id); }catch(e){} try{ await idb.del('audio', n.id); }catch(e){} }
+
+/* ================= tags ================= */
+const STOP = new Set(('the and for with from into onto that this these those are was were our your their about over under then than when what which who how why ' +
+ 'recording record rec audio voice memo memos new final copy file track untitled img vid mov wav mp3 m4a aac ogg webm flac mp4 part take draft version ver ' +
+ 'jan feb mar apr may jun jul aug sep sept oct nov dec january february march april june july august september october november december ' +
+ 'mon tue wed thu fri sat sun am pm talk presentation meeting session whatsapp ptt aud').split(' '));
+const SHORT_OK = new Set(['ai','hr','ux','ui','it','pr','qa','ml','os','ar','vr','kpi','roi','seo','api','b2b','b2c','esg','crm','erp']);
+function normTag(t){ return String(t||'').toLowerCase().replace(/[#_]+/g,' ').replace(/[^a-z0-9À-￿ &+\-.]/g,'').replace(/\s+/g,' ').trim().slice(0,32); }
+function tagsFromFilename(name){
+  if (!name) return [];
+  let base = name.replace(/\.[a-z0-9]{2,5}$/i,'').replace(/([a-z])([A-Z])/g,'$1 $2');
+  const out = [];
+  for (const t of base.split(/[\s_\-.,()\[\]{}+]+/).map(x=>x.toLowerCase()).filter(Boolean)){
+    if (/^\d+$/.test(t)) continue;
+    if (/^\d{1,4}[a-z]{0,2}$/.test(t) && !/^q\d$/.test(t)) continue;
+    if (STOP.has(t)) continue;
+    if (t.length < 3 && !SHORT_OK.has(t) && !/^[a-z]\d$/.test(t)) continue;
+    const n = normTag(t); if (n && !out.includes(n)) out.push(n);
+  }
+  return out.slice(0,8);
+}
+function mergeTags(note, list, source){
+  const removed = new Set(note.removedTags || []); const have = new Set(note.tags.map(t=>t.name));
+  for (const raw of list){ const n = normTag(raw); if (!n || have.has(n) || removed.has(n)) continue; note.tags.push({name:n, source}); have.add(n); }
+}
+
+/* ================= summary & tagging ================= */
+function parseJSON(raw){
+  const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+  if (s < 0 || e <= s) throw new Error('The summary came back in an unexpected form. Tap Summarise & tag to try again.');
+  return JSON.parse(raw.slice(s, e+1));
+}
+async function summarise(note, progress){
+  let text = (note.transcript || '').trim();
+  if (text.length > 400000) text = text.slice(0, 400000);
+  const sl = settings().sumLang;
+  const langLine = sl === 'gu' ? 'Write title, summary, key points and tags in Gujarati.' : sl === 'both' ? 'Write title, summary and key points in English. Give tags in English, and also give the same main topics in Gujarati in "tags_gu".' : 'Write title, summary, key points and tags in English, even though the talk may be in Gujarati or Hindi. Keep names of people and places as they are, spelled in English.';
+  const prompt = `You organise recorded talks and presentations so they can be found later.
+File name: "${(note.fileName||note.title||'').replace(/"/g,"'")}"
+The transcript below was made by speech recognition and may contain mistakes. ${langLine}
+
+Return one JSON object with exactly these keys:
+"title": short descriptive title, max 8 words
+"summary": 4-6 sentence summary of what the talk covers and its main message
+"key_points": array of 5-10 concise key points, stories, teachings, names, decisions or action items
+"tags": array of 5-10 topic tags, lowercase, 1-3 words each, naming the main subjects, people, places, organisations or ideas, most important first${sl === 'both' ? '\n"tags_gu": array of the same topics in Gujarati' : ''}
+
+Transcript:
+"""
+${text}
+"""`;
+  const raw = await generate([{text: prompt}], { responseMimeType:'application/json', maxOutputTokens: 4000 }, (w)=> progress && progress(`Gemini free limit reached, continuing in ${w}s…`));
+  const obj = parseJSON(raw);
+  const arr = (x)=> Array.isArray(x) ? x.filter(v=>typeof v==='string') : [];
+  return { title: typeof obj.title==='string' ? obj.title.trim().slice(0,90) : '', summary: typeof obj.summary==='string' ? obj.summary.trim() : '', keyPoints: arr(obj.key_points).slice(0,12), tags: arr(obj.tags).slice(0,10).concat(arr(obj.tags_gu).slice(0,10)) };
+}
+async function runSummary(n){
+  working.set(n.id, {label:'Writing summary and tags…', pct:null}); render(); refreshSheet();
+  try {
+    const r = await summarise(n, (label)=>{ working.set(n.id, {label, pct:null}); render(); refreshSheet(); });
+    if (r.title && !n.titleEdited) n.title = r.title;
+    n.summary = r.summary; n.keyPoints = r.keyPoints;
+    n.tags = n.tags.filter(t=>t.source!=='ai'); mergeTags(n, r.tags, 'ai');
+    n.status = 'done'; n.error = null;
+  } catch(e){ n.status = 'needs-summary'; n.error = 'Summary failed: ' + e.message; }
+  working.delete(n.id); await saveNote(n); refreshSheet();
+}
+
+/* ================= transcription pipeline ================= */
+let chain = Promise.resolve();
+function enqueue(fn){ const p = chain.then(fn, fn); chain = p.catch(()=>{}); return p; }
+
+// Transcribe one audio file with Gemini. Long outputs are continued from the last timestamp.
+async function transcribeWhole(n, parts, totalSec, label){
+  const set = (l, pct)=>{ working.set(n.id, {label: l, pct}); render(); refreshSheet(); };
+  let text = '', from = 0;
+  for (let round = 0; round < 8; round++){
+    const r = await generateRaw([{ role:'user', parts: parts.concat([{ text: transcribePrompt(from) }]) }], { maxOutputTokens: 65536 }, (w)=> set(`Gemini free limit reached, continuing in ${w}s…`, null));
+    let chunk = (r.text || '').trim();
+    if (from && chunk){
+      // The last paragraph of the previous reply may have been cut off mid-sentence: replace it with the new copy.
+      const fs = lastStamp(text);
+      const idx = text.search(new RegExp('\\[' + fmtDur(fs).replace(/^(\d):/, '0$1:') + '\\][^\\[]*$'));
+      const idx2 = idx >= 0 ? idx : text.lastIndexOf('[' + fmtDur(fs) + ']');
+      if (idx2 > 0) text = text.slice(0, idx2).trim();
+      chunk = chunk.replace(/^\s*```[a-z]*\s*/,'');
+      const lines = chunk.split('\n'); while (lines.length && (!lines[0].trim() || (lastStamp(lines[0]) && lastStamp(lines[0]) < fs))) lines.shift(); chunk = lines.join('\n');
+    }
+    chunk = chunk.replace(/```/g,'').trim();
+    if (chunk) text = (text ? text + '\n\n' : '') + chunk;
+    n.transcript = text;
+    const reached = lastStamp(text);
+    if (totalSec) set(`${label} ${Math.min(99, Math.round(reached/totalSec*100))}%`, Math.min(0.97, reached/totalSec));
+    const cutOff = r.finish === 'MAX_TOKENS';
+    const shortOfEnd = totalSec && reached && reached < totalSec - 120;
+    if (!chunk || (!cutOff && !shortOfEnd)) break;
+    if (reached <= from) break;            // no progress, stop rather than loop
+    from = reached;
+  }
+  return text;
+}
+const SEG = 480;            // 8-minute sections
+const PARALLEL = 4;         // sections transcribed at the same time
+const running = new Set();  // notes being worked on right now
+function rangePrompt(from, to){
+  const v = settings().vocab;
+  return `Transcribe ONLY the part of this recording between ${fmtDur(from)} and ${fmtDur(to)}, exactly as spoken, word for word. Start at ${fmtDur(from)} and stop at ${fmtDur(to)}; ignore everything outside that range. ${langInstruction()}
+Do not translate, summarise, shorten or skip anything. Do not repeat yourself. If a part is unclear, write [unclear]. Mark long music, chanting or silence as [music] or [silence].
+Start a new paragraph about every minute, beginning each paragraph with its timestamp in the FULL recording in square brackets, like [${fmtDur(from)}].${v ? '\nNames and terms that may be spoken: ' + v + '.' : ''}
+Output only the transcript.`;
+}
+async function transcribeRange(fileRef, from, to, onWait){
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++){
+    try {
+      const r = await generateRaw([{ role:'user', parts:[{ file_data:{ mime_type: fileRef.mimeType, file_uri: fileRef.uri } }, { text: rangePrompt(from, to) }] }], { maxOutputTokens: 24000 }, onWait);
+      return (r.text || '').replace(/```[a-z]*/g,'').trim();
+    } catch(e){
+      lastErr = e;
+      if (!e.network) throw e;
+      await waitVisible(); await sleep(1500);
+    }
+  }
+  throw lastErr;
+}
+function waitVisible(){ return document.visibilityState === 'visible' ? Promise.resolve() : new Promise(r=>{ const f=()=>{ if (document.visibilityState==='visible'){ document.removeEventListener('visibilitychange', f); r(); } }; document.addEventListener('visibilitychange', f); }); }
+function joinSegs(n){
+  const last = n.segs[n.segs.length-1];
+  return n.segs.filter(sg=>sg.done && sg.text).map(sg=>{
+    // keep each paragraph only in the section its timestamp belongs to, so boundaries are not doubled
+    const paras = sg.text.split(/\n\s*\n/).filter(p=>{ const m = p.match(/^\s*\[[\d:]+\]/); if (!m) return true; const t = lastStamp(m[0]); return t >= sg.from - 5 && (sg === last ? t <= sg.to + 30 : t < sg.to); });
+    return paras.join('\n\n');
+  }).join('\n\n');
+}
+let wake = null;
+async function keepAwake(on){
+  try {
+    if (on && !wake && navigator.wakeLock){ wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', ()=>{ wake = null; }); }
+    if (!on && wake && !running.size){ await wake.release(); wake = null; }
+  } catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState !== 'visible') return;
+  if (running.size) keepAwake(true);
+  // pick up anything that stopped while the app was away
+  for (const n of notes.values()) if (n.hasAudio && (n.status==='transcribing' || n.status==='queued') && !running.has(n.id) && !working.has(n.id) && settings().key){ working.set(n.id,{label:'Resuming…',pct:null}); enqueue(()=>transcribeNote(n)); }
+  render();
+});
+
+async function getFileRef(n, blob, mime, set){
+  if (n.file && n.file.uri && Date.now() - n.file.at < 40*3600*1000) return n.file;
+  set('Uploading audio…', 0.02);
+  const f = await uploadFile(blob, mime, n.fileName, (x)=> set(`Uploading audio… ${Math.round(x*100)}%`, x*0.15));
+  n.file = { uri: f.uri, mimeType: f.mimeType || mime, at: Date.now() }; await saveNote(n);
+  return n.file;
+}
+
+async function transcribeNote(n){
+  if (running.has(n.id)) return;
+  const blob = await idb.get('audio', n.id).catch(()=>null);
+  if (!blob){ n.status='error'; n.error='The audio for this talk is not on this device.'; working.delete(n.id); await saveNote(n); return; }
+  if (!settings().key){ n.status='waiting-key'; n.error='Add your Gemini key in Settings, then tap Transcribe.'; working.delete(n.id); await saveNote(n); checkKeyBanner(); return; }
+  running.add(n.id); keepAwake(true);
+  n.status = 'transcribing'; n.error = null; if (!Array.isArray(n.segs)) n.transcript = ''; await saveNote(n);
+  const set = (l, pct)=>{ working.set(n.id, {label: l, pct}); renderSoon(); };
+  try {
+    if (!n.duration) n.duration = await mediaDuration(blob);
+    const total = n.duration;
+    const mime = geminiMime(blob, n.fileName);
+    let fileRef = null;
+    try { fileRef = await getFileRef(n, blob, mime, set); }
+    catch(e){ if (e.badKey) throw e; if (e.network) throw e; fileRef = null; }
+
+    if (fileRef && total && total > SEG * 1.25){
+      // Long talk: sections in parallel, each saved as soon as it is done.
+      if (!Array.isArray(n.segs) || !n.segs.length || n.segTotal !== Math.round(total)){
+        n.segs = []; for (let a = 0; a < total; a += SEG) n.segs.push({ from: a, to: Math.min(Math.ceil(total), a + SEG), text:'', done:false });
+        n.segTotal = Math.round(total);
+      }
+      const doneCount = ()=> n.segs.filter(x=>x.done).length;
+      const show = (extra)=> set(`Transcribing… ${doneCount()} of ${n.segs.length} sections done${extra||''}`, 0.15 + 0.85*doneCount()/n.segs.length);
+      show();
+      const todo = n.segs.filter(x=>!x.done); let k = 0, failed = null, refreshed = false;
+      const lane = async ()=>{
+        while (k < todo.length && !failed){
+          const sg = todo[k++];
+          try { sg.text = await transcribeRange(fileRef, sg.from, sg.to, (w)=> show(` · free limit, waiting ${w}s`)); }
+          catch(e){
+            if (e.fileGone && !refreshed){ refreshed = true; n.file = null; try { fileRef = await getFileRef(n, blob, mime, set); sg.text = await transcribeRange(fileRef, sg.from, sg.to); } catch(e2){ failed = e2; continue; } }
+            else { failed = e; continue; }
+          }
+          sg.done = true; n.transcript = joinSegs(n); show(); refreshSoon(); await saveNote(n);
+        }
+      };
+      await Promise.all(Array.from({length: Math.min(PARALLEL, todo.length)}, lane));
+      if (failed) throw failed;
+      n.transcript = joinSegs(n);
+    } else if (fileRef){
+      set('Transcribing…', 0.3);
+      n.transcript = await transcribeWhole(n, [{ file_data: { mime_type: fileRef.mimeType, file_uri: fileRef.uri } }], total, 'Transcribing…');
+    } else if (blob.size <= 14 * 1048576){
+      set('Transcribing…', 0.2);
+      n.transcript = await transcribeWhole(n, [{ inline_data: { mime_type: mime, data: await blobToBase64(blob) } }], total, 'Transcribing…');
+    } else {
+      set('Preparing a long recording…', 0.03);
+      let dec;
+      try { dec = await decodeTo16k(blob); }
+      catch(e){ throw new Error('Could not upload this ' + fmtMB(blob.size) + ' file, and the phone could not split it. Try again on Wi-Fi.'); }
+      const pts = splitPoints(dec.pcm, 270, 300); const out = [];
+      for (let i = 0; i < pts.length; i++){
+        set(`Transcribing part ${i+1} of ${pts.length}…`, (i+0.3)/pts.length);
+        const t = await transcribeWhole(n, [{ inline_data: { mime_type:'audio/wav', data: await blobToBase64(wavBlob(dec.pcm, pts[i][0], pts[i][1])) } }], null, '');
+        const off = Math.round(pts[i][0]/16000);
+        out.push(t.replace(/\[(\d{1,2}):(\d{2})\]/g, (m, a, b)=> '[' + fmtDur(off + (+a)*60 + (+b)) + ']'));
+      }
+      n.transcript = out.join('\n\n');
+    }
+    n.transcript = (n.transcript || '').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    running.delete(n.id);
+    if (!n.transcript){ n.status='error'; n.error='No speech was found in this recording.'; working.delete(n.id); await saveNote(n); refreshSheet(); return; }
+    n.status = 'summarising'; n.segs = null; await saveNote(n);
+    await runSummary(n);
+  } catch(e){
+    running.delete(n.id); working.delete(n.id);
+    if (e.network){ n.error = 'Paused while the app was in the background. It carries on when you open the app.'; await saveNote(n); }
+    else { n.status='error'; n.error = e.message || String(e); await saveNote(n); }
+    refreshSheet();
+  } finally { running.delete(n.id); keepAwake(false); }
+}
+function newNote(fields){
+  const n = Object.assign({ id: uid(), createdAt: Date.now(), updatedAt: Date.now(), title:'', fileName:'', transcript:'', summary:'', keyPoints:[], tags:[], removedTags:[], status:'new', hasAudio:false, duration:null, source:'upload' }, fields);
+  mergeTags(n, tagsFromFilename(n.fileName || ''), 'file');
+  return n;
+}
+async function addAudio(blob, fileName, source, title){
+  const n = newNote({ fileName, title: title || fileName.replace(/\.[a-z0-9]{2,5}$/i,'').replace(/_+/g,' '), source, status:'queued', hasAudio:true, sizeBytes: blob.size });
+  try { await idb.put('audio', n.id, blob); }
+  catch(e){ toast('Could not store the audio on this phone (storage full?).', 4500); n.hasAudio = false; }
+  n.duration = await mediaDuration(blob);
+  working.set(n.id, {label:'Waiting…', pct:0});
+  await saveNote(n);
+  if (!n.hasAudio){ working.delete(n.id); n.status='error'; n.error='Audio could not be stored.'; await saveNote(n); return n; }
+  enqueue(()=>transcribeNote(n));
+  return n;
+}
+
+/* ================= recording ================= */
+let rec = null;
+function pickMime(){
+  const c = ['audio/webm;codecs=opus','audio/mp4;codecs=mp4a.40.2','audio/mp4','audio/aac','audio/webm','audio/ogg;codecs=opus'];
+  if (!window.MediaRecorder) return null;
+  for (const t of c){ try { if (MediaRecorder.isTypeSupported(t)) return t; } catch(e){} }
+  return '';
+}
+async function startRecording(kind){
+  if (rec) return;
+  if (!window.MediaRecorder || !navigator.mediaDevices){ toast('This browser cannot record. Use Upload audio instead.', 4000); return; }
+  let stream;
+  try {
+    if (kind === 'tab'){
+      stream = await navigator.mediaDevices.getDisplayMedia({ video:true, audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false }, preferCurrentTab:false, systemAudio:'include' });
+      if (!stream.getAudioTracks().length){ stream.getTracks().forEach(t=>t.stop()); toast('No audio was shared. Tick “Share tab audio” when choosing the tab.', 5000); return; }
+      stream.getVideoTracks().forEach(t=>t.stop());
+      stream = new MediaStream(stream.getAudioTracks());
+    } else {
+      const room = settings().room;
+      stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:!room, noiseSuppression:!room, autoGainControl:true, channelCount:1 } });
+    }
+  } catch(e){
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) toast('Microphone permission was blocked. Allow it in your phone settings for this app, then try again.', 6000);
+    else toast('Could not start recording: ' + (e.message || e.name), 5000);
+    return;
+  }
+  const mime = pickMime();
+  let mr;
+  try { mr = new MediaRecorder(stream, Object.assign({ audioBitsPerSecond: 64000 }, mime ? {mimeType: mime} : {})); }
+  catch(e){ mr = new MediaRecorder(stream); }
+  rec = { mr, stream, chunks:[], kind, start: Date.now(), pausedMs:0, pauseAt:null, wake:null, ctx:null, an:null, raf:0, discard:false };
+  mr.ondataavailable = (e)=>{ if (e.data && e.data.size) rec && rec.chunks.push(e.data); };
+  mr.onstop = onRecStop;
+  mr.start();
+  try { if (navigator.wakeLock) rec.wake = await navigator.wakeLock.request('screen'); } catch(e){}
+  // level meter
+  try { const AC = window.AudioContext || window.webkitAudioContext; rec.ctx = new AC(); const src = rec.ctx.createMediaStreamSource(stream); rec.an = rec.ctx.createAnalyser(); rec.an.fftSize = 512; src.connect(rec.an); } catch(e){}
+  const data = new Uint8Array(512);
+  const loop = ()=>{ if (!rec) return; const el = (Date.now() - rec.start - rec.pausedMs - (rec.pauseAt ? Date.now()-rec.pauseAt : 0))/1000; $('recTime').textContent = fmtDur(el);
+    if (rec.an){ rec.an.getByteTimeDomainData(data); let m=0; for (let i=0;i<data.length;i++){ const v=Math.abs(data[i]-128); if (v>m) m=v; } $('recMeter').style.width = Math.min(100, m/1.1) + '%'; }
+    rec.raf = requestAnimationFrame(loop); };
+  loop();
+  $('recSrc').textContent = kind === 'tab' ? 'Tab / screen audio' : (settings().room ? 'Microphone · room mode' : 'Microphone');
+  $('recState').textContent = 'Recording'; $('recPause').textContent = 'Pause'; $('recPanel').classList.remove('paused');
+  $('recPanel').classList.remove('hidden'); $('actions').classList.add('hidden');
+  stream.getAudioTracks()[0].addEventListener('ended', ()=>{ if (rec && rec.mr.state !== 'inactive') rec.mr.stop(); });
+}
+function stopTracks(){ if (!rec) return; try{ rec.stream.getTracks().forEach(t=>t.stop()); }catch(e){} try{ rec.ctx && rec.ctx.close(); }catch(e){} try{ rec.wake && rec.wake.release(); }catch(e){} cancelAnimationFrame(rec.raf); }
+async function onRecStop(){
+  const r = rec; stopTracks(); rec = null;
+  $('recPanel').classList.add('hidden'); $('actions').classList.remove('hidden');
+  if (!r || r.discard) return;
+  const type = (r.mr.mimeType || (r.chunks[0] && r.chunks[0].type) || 'audio/webm').split(';')[0];
+  const blob = new Blob(r.chunks, {type});
+  if (blob.size < 2000){ toast('The recording was empty.'); return; }
+  const d = new Date();
+  const stamp = d.toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+  const fname = 'Recording ' + d.toISOString().slice(0,16).replace('T',' ').replace(':','-') + '.' + extFor(type, '');
+  const n = await addAudio(blob, fname, r.kind === 'tab' ? 'tab' : 'mic', 'Recording ' + stamp);
+  n.duration = n.duration || (Date.now() - r.start - r.pausedMs)/1000; saveNote(n);
+  openSheet(n.id);
+}
+$('recBtn').onclick = ()=> startRecording('mic');
+$('tabBtn').onclick = ()=> startRecording('tab');
+$('recStop').onclick = ()=>{ if (rec && rec.mr.state !== 'inactive') rec.mr.stop(); };
+$('recPause').onclick = ()=>{ if (!rec) return;
+  if (rec.mr.state === 'recording'){ rec.mr.pause(); rec.pauseAt = Date.now(); $('recPause').textContent='Resume'; $('recState').textContent='Paused'; $('recPanel').classList.add('paused'); }
+  else if (rec.mr.state === 'paused'){ rec.mr.resume(); rec.pausedMs += Date.now()-rec.pauseAt; rec.pauseAt=null; $('recPause').textContent='Pause'; $('recState').textContent='Recording'; $('recPanel').classList.remove('paused'); } };
+$('recCancel').onclick = async ()=>{ if (!rec) return; if (await confirmBox('Discard this recording?')){ if (!rec) return; rec.discard = true; rec.mr.stop(); } };
+window.addEventListener('beforeunload', (e)=>{ if (rec || working.size){ e.preventDefault(); e.returnValue=''; } });
+document.addEventListener('visibilitychange', async ()=>{ if (rec && document.visibilityState === 'visible' && !rec.wake && navigator.wakeLock){ try{ rec.wake = await navigator.wakeLock.request('screen'); }catch(e){} } });
+if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) $('tabBtn').hidden = false;
+
+/* ================= list UI ================= */
+let query = '', activeTag = null, lastShown = [];
+const terms = ()=> query.toLowerCase().split(/\s+/).filter(Boolean);
+function matches(n, ts){
+  if (activeTag && !n.tags.some(t=>t.name===activeTag)) return false;
+  if (!ts.length) return true;
+  const hay = [n.title, n.fileName, n.summary, (n.keyPoints||[]).join(' '), n.tags.map(t=>t.name).join(' '), n.transcript].join(' \n ').toLowerCase();
+  return ts.every(t => hay.includes(t));
+}
+function highlight(text, ts){
+  const frag = document.createDocumentFragment(); text = text || '';
+  if (!ts.length){ frag.append(text); return frag; }
+  const re = new RegExp('(' + ts.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')', 'gi');
+  let last = 0; text.replace(re, (m, _g, idx)=>{ frag.append(text.slice(last, idx)); frag.append(h('mark',{text:m})); last = idx + m.length; return m; });
+  frag.append(text.slice(last)); return frag;
+}
+function snippet(n, ts){
+  if (!ts.length || !n.transcript) return null;
+  const i = n.transcript.toLowerCase().indexOf(ts[0]); if (i < 0) return null;
+  const s = Math.max(0, i-70), e = Math.min(n.transcript.length, i+110);
+  return (s>0?'…':'') + n.transcript.slice(s,e) + (e<n.transcript.length?'…':'');
+}
+function tagEl(t, onRemove){
+  const el = h('span', {class:'tag ' + (t.source==='file'?'file':t.source==='manual'?'manual':'')}, t.name);
+  if (onRemove) el.append(h('button',{class:'x','aria-label':'Remove tag '+t.name, onclick:(e)=>{ e.stopPropagation(); onRemove(t); }}, '×'));
+  else el.addEventListener('click', (e)=>{ e.stopPropagation(); activeTag = t.name; closeSheet(); render(); window.scrollTo(0,0); });
+  return el;
+}
+function statusLine(n){
+  const w = working.get(n.id);
+  if (w){ const d = h('div'); d.append(h('div',{class:'status'}, w.label)); if (w.pct!=null) d.append(h('div',{class:'bar'}, h('i',{style:`width:${Math.round(w.pct*100)}%`}))); return d; }
+  if (n.error) return h('div',{class:'status err'}, n.error);
+  if (n.status==='transcribing' || n.status==='queued') return h('div',{class:'status'}, 'Paused · carries on when the app is open' + (n.segs ? ` (${n.segs.filter(x=>x.done).length} of ${n.segs.length} sections done)` : ''));
+  if (n.status==='summarising') return h('div',{class:'status err'}, 'Interrupted. Open it and tap Summarise & tag.');
+  return null;
+}
+function render(){
+  const counts = new Map();
+  for (const n of notes.values()) for (const t of n.tags) counts.set(t.name, (counts.get(t.name)||0)+1);
+  const chips = $('chips'); chips.textContent = '';
+  if (counts.size){
+    chips.append(h('button',{class:'chip'+(activeTag?'':' on'), onclick:()=>{ activeTag=null; render(); }}, 'All'));
+    [...counts.entries()].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,80).forEach(([name,c])=>chips.append(h('button',{class:'chip'+(activeTag===name?' on':''), onclick:()=>{ activeTag = activeTag===name?null:name; render(); }}, name, h('span',{class:'n'}, String(c)))));
+  }
+  const ts = terms();
+  const all = [...notes.values()].sort((a,b)=>b.createdAt-a.createdAt);
+  const shown = lastShown = all.filter(n=>matches(n, ts));
+  $('dlAll').classList.toggle('hidden', !shown.length);
+  $('count').textContent = all.length ? (shown.length===all.length ? `${all.length} talk${all.length>1?'s':''}` : `${shown.length} of ${all.length} talks`) + (activeTag?` tagged “${activeTag}”`:'') : '';
+  const list = $('list'); list.textContent = '';
+  if (!all.length){ list.append(h('div',{class:'empty'}, h('div',{style:'font-size:30px'},'🎙️'), h('p',{style:'margin:6px 0 2px;font-weight:600;color:var(--ink)'},'No talks yet'), h('p',{style:'margin:0'},'Tap Record or Upload audio. File names become tags too: “Q3_Budget_Review.m4a” → q3, budget, review.'))); return; }
+  if (!shown.length){ list.append(h('div',{class:'empty'},'Nothing matches. Try another word or clear the tag filter.')); return; }
+  for (const n of shown){
+    const card = h('div',{class:'card', role:'button', tabindex:'0', onclick:()=>openSheet(n.id)});
+    card.append(h('h3',null, highlight(n.title || n.fileName || 'Untitled', ts)));
+    card.append(h('div',{class:'meta'}, [fmtDate(n.createdAt), n.duration?fmtDur(n.duration):null, n.hasAudio?'🔊':null].filter(Boolean).join(' · ')));
+    const st = statusLine(n); if (st) card.append(st);
+    if (n.summary) card.append(h('div',{class:'sum'}, highlight(n.summary, ts)));
+    const sn = snippet(n, ts); if (sn) card.append(h('div',{class:'snip'}, highlight(sn, ts)));
+    if (n.tags.length){ const tg = h('div'); n.tags.slice(0,8).forEach(t=>tg.append(tagEl(t))); card.append(tg); }
+    list.append(card);
+  }
+}
+
+let _rt = null, _st = null;
+function renderSoon(){ if (_rt) return; _rt = setTimeout(()=>{ _rt = null; render(); if (openId) refreshStatus(); }, 400); }
+function refreshSoon(){ if (_st) return; _st = setTimeout(()=>{ _st = null; refreshSheet(); }, 2500); }
+function refreshStatus(){
+  const n = notes.get(openId); const el = document.getElementById('sheetStatus'); if (!n || !el) return;
+  el.textContent = ''; const st = statusLine(n); if (st) el.append(st);
+}
+/* ================= detail UI ================= */
+let openId = null, audioURL = null, showFull = false;
+function openSheet(id){ openId = id; showFull = false; $('sheet').classList.add('open'); refreshSheet(true); history.pushState({sheet:1}, ''); }
+function closeSheet(fromPop){ if (!openId) return; openId = null; $('sheet').classList.remove('open'); if (audioURL){ URL.revokeObjectURL(audioURL); audioURL = null; } if (!fromPop && history.state && history.state.sheet) history.back(); }
+function openSettings(){ loadSettingsUI(); $('settings').classList.add('open'); history.pushState({sheet:2}, ''); storageInfo(); renderInstallHelp($('installHelp')); }
+function closeSettings(fromPop){ if (!$('settings').classList.contains('open')) return; $('settings').classList.remove('open'); if (!fromPop && history.state && history.state.sheet) history.back(); }
+window.addEventListener('popstate', ()=>{ closeSheet(true); closeSettings(true); });
+$('backBtn').onclick = ()=>closeSheet(); $('setBtn').onclick = openSettings; $('setBack').onclick = ()=>closeSettings();
+
+function noteText(n){
+  const L = [n.title || n.fileName || 'Untitled', [fmtDate(n.createdAt), n.duration?fmtDur(n.duration):null, n.fileName?('File: '+n.fileName):null].filter(Boolean).join(' · ')];
+  if (n.tags.length) L.push('Tags: ' + n.tags.map(t=>t.name).join(', '));
+  if (n.summary) L.push('', 'SUMMARY', n.summary);
+  if (n.keyPoints && n.keyPoints.length){ L.push('', 'KEY POINTS'); n.keyPoints.forEach(k=>L.push('- ' + k)); }
+  if (n.transcript) L.push('', 'TRANSCRIPT', n.transcript);
+  return L.join('\n');
+}
+const safeName = (s)=> (s||'talk').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'_').slice(0,60) || 'talk';
+
+async function refreshSheet(first){
+  if (!openId) return;
+  const n = notes.get(openId); if (!n){ closeSheet(); return; }
+  const body = $('sheetBody'); const keepAudio = body.querySelector('audio'); const scroll = body.scrollTop;
+  $('sheetTitle').textContent = n.title || n.fileName || 'Untitled';
+  body.textContent = '';
+  const ts = terms(); const w = working.get(n.id);
+
+  const head = h('div',{class:'sec'});
+  const ti = h('input',{class:'titleinput', value:n.title||'', placeholder:'Title', 'aria-label':'Title'});
+  ti.addEventListener('change', ()=>{ n.title = ti.value.trim(); n.titleEdited = true; saveNote(n); $('sheetTitle').textContent = n.title; });
+  head.append(ti, h('div',{class:'meta'}, [fmtDate(n.createdAt), n.duration?fmtDur(n.duration):null, n.sizeBytes?fmtMB(n.sizeBytes):null].filter(Boolean).join(' · ')));
+  if (n.fileName) head.append(h('div',{class:'meta'}, 'File: ' + n.fileName));
+  if (n.hasAudio){
+    if (keepAudio && !first) head.append(keepAudio);
+    else { const au = h('audio',{controls:true, preload:'metadata'}); head.append(au);
+      idb.get('audio', n.id).then(b=>{ if (b){ audioURL = URL.createObjectURL(b); au.src = audioURL; } }).catch(()=>{}); }
+  }
+  const stBox = h('div',{id:'sheetStatus', style:'margin-top:8px'}); const st = statusLine(n); if (st) stBox.append(st); head.append(stBox);
+  if (w) head.append(h('div',{class:'note'},'The screen stays on while this runs. If you leave the app, it carries on from where it stopped when you come back.'));
+  if (!w && n.hasAudio){ const done = n.status === 'done' || n.status === 'needs-summary'; head.append(h('div',{class:'row', style:'margin-top:10px'}, h('button',{class:'btn small' + (done?'':' primary'), onclick:async()=>{ if (done && !(await confirmBox('Transcribe this again? The current transcript and summary will be replaced.'))) return; if (done){ n.status = 'queued'; n.segs = null; } working.set(n.id,{label:'Waiting…',pct:0}); refreshSheet(); enqueue(()=>transcribeNote(n)); }}, done ? 'Transcribe again' : 'Transcribe'))); }
+  body.append(head);
+
+  // tags
+  const tagSec = h('div',{class:'sec'}, h('h4',null,'Tags'));
+  const tw = h('div');
+  n.tags.forEach(t=>tw.append(tagEl(t, (tt)=>{ n.tags = n.tags.filter(x=>x.name!==tt.name); if (tt.source!=='manual') n.removedTags = [...new Set([...(n.removedTags||[]), tt.name])]; saveNote(n); refreshSheet(); })));
+  if (!n.tags.length) tw.append(h('span',{class:'meta'},'No tags yet.'));
+  tagSec.append(tw);
+  const tin = h('input',{class:'field', placeholder:'Add tags, separated by commas', 'aria-label':'Add tag', list:'tagSuggest', enterkeyhint:'done'});
+  const dl = h('datalist',{id:'tagSuggest'}); const allT = new Set(); for (const x of notes.values()) x.tags.forEach(t=>allT.add(t.name)); [...allT].sort().forEach(t=>dl.append(h('option',{value:t})));
+  const addTags = ()=>{ const vals = tin.value.split(',').map(normTag).filter(Boolean); if (!vals.length) return;
+    n.removedTags = (n.removedTags||[]).filter(r=>!vals.includes(r)); n.tags = n.tags.filter(t=>!vals.includes(t.name)); vals.forEach(v=>n.tags.push({name:v, source:'manual'})); saveNote(n); refreshSheet(); };
+  tin.addEventListener('keydown', e=>{ if (e.key==='Enter'){ e.preventDefault(); addTags(); } });
+  tagSec.append(h('div',{class:'addtag'}, tin, dl, h('button',{class:'btn small primary', onclick:addTags}, 'Add')));
+  tagSec.append(h('div',{class:'legend'}, h('span',null,h('span',{class:'dot',style:'background:var(--accent)'}),'from the talk'), h('span',null,h('span',{class:'dot',style:'background:var(--file)'}),'from file name'), h('span',null,h('span',{class:'dot',style:'background:var(--manual)'}),'added by you')));
+  body.append(tagSec);
+
+  // summary
+  const sum = h('div',{class:'sec'}, h('h4',null,'Summary'));
+  if (n.summary){ sum.append(h('div',null, highlight(n.summary, ts)));
+    if (n.keyPoints && n.keyPoints.length){ const ul = h('ul',{class:'kp'}); n.keyPoints.forEach(k=>ul.append(h('li',null, highlight(k, ts)))); sum.append(h('div',{style:'margin-top:10px;font-weight:600;font-size:14px'},'Key points'), ul); } }
+  else sum.append(h('div',{class:'meta'}, w ? 'Coming once the transcript is ready.' : 'No summary yet.'));
+  if (!w && n.transcript) sum.append(h('div',{class:'row', style:'margin-top:10px'}, h('button',{class:'btn small', onclick:()=>runSummary(n)}, n.summary ? 'Redo summary & tags' : 'Summarise & tag')));
+  body.append(sum);
+
+  // transcript
+  const tr = h('div',{class:'sec'}, h('h4',null,'Transcript'));
+  if (n.transcript){
+    tr.append(h('div',{class:'transcript' + (showFull || ts.length ? '' : ' clamp')}, highlight(n.transcript, ts)));
+    const row = h('div',{class:'row', style:'margin-top:10px'});
+    if (!ts.length && n.transcript.length > 700) row.append(h('button',{class:'btn small', onclick:()=>{ showFull=!showFull; refreshSheet(); }}, showFull?'Show less':'Show all'));
+    row.append(h('button',{class:'btn small', onclick:async()=>{ try{ await navigator.clipboard.writeText(n.transcript); toast('Copied'); }catch(e){ toast('Copy failed. Select the text instead.'); } }}, 'Copy'));
+    if (!w) row.append(h('button',{class:'btn small', onclick:()=>editTranscript(n, tr)}, 'Edit'));
+    tr.append(row);
+  } else tr.append(h('div',{class:'meta'}, w ? 'Working on it…' : 'No transcript yet.'));
+  body.append(tr);
+
+  const acts = h('div',{class:'row', style:'justify-content:space-between'});
+  acts.append(h('div',{class:'row'},
+    h('button',{class:'btn small primary', onclick:()=>shareOrDownload(safeName(n.title||n.fileName)+'.txt', noteText(n))}, 'Download text'),
+    n.hasAudio ? h('button',{class:'btn small', onclick:async()=>{ const b = await idb.get('audio', n.id).catch(()=>null); if (b) download(safeName(n.title||n.fileName)+'.'+extFor(b.type, n.fileName), b); }}, 'Download audio') : null));
+  acts.append(h('button',{class:'btn small danger', onclick:async()=>{ if (await confirmBox('Delete “' + (n.title||'this talk') + '” with its transcript and audio? This cannot be undone.')){ closeSheet(); await deleteNote(n); toast('Deleted'); } }}, 'Delete'));
+  body.append(acts);
+  if (!first) body.scrollTop = scroll;
+}
+function editTranscript(n, sec){
+  sec.textContent=''; sec.append(h('h4',null,'Edit transcript'));
+  const ta = h('textarea',{style:'min-height:300px'}); ta.value = n.transcript; sec.append(ta);
+  sec.append(h('div',{class:'row', style:'justify-content:flex-end;margin-top:8px'}, h('button',{class:'btn small', onclick:()=>refreshSheet()},'Cancel'),
+    h('button',{class:'btn small primary', onclick:async()=>{ n.transcript = ta.value.trim(); await saveNote(n); refreshSheet(); toast('Saved. Tap “Redo summary & tags” to update them.', 3500); }},'Save')));
+}
+
+/* ================= wiring ================= */
+$('fileIn').onchange = (e)=>{ const files = [...e.target.files]; e.target.value=''; if (!files.length) return;
+  toast(files.length>1 ? `Adding ${files.length} files…` : 'Adding…');
+  (async ()=>{ for (const f of files) await addAudio(f, f.name || 'Audio', 'upload'); })(); };
+$('q').addEventListener('input', ()=>{ query = $('q').value.trim(); render(); if (openId) refreshSheet(); });
+$('dlAll').onclick = ()=>{ if (lastShown.length) shareOrDownload('akshar-talk-script_' + new Date().toISOString().slice(0,10) + '.txt', lastShown.map(noteText).join('\n\n==============================\n\n')); };
+$('pasteBtn').onclick = ()=>{ $('pasteModal').classList.add('open'); };
+$('pasteCancel').onclick = ()=> $('pasteModal').classList.remove('open');
+$('pasteSave').onclick = async ()=>{
+  const text = $('pasteText').value.trim(), name = $('pasteTitle').value.trim();
+  if (!text){ toast('Paste some text first'); return; }
+  $('pasteModal').classList.remove('open'); $('pasteText').value=''; $('pasteTitle').value='';
+  const n = newNote({ title: name.replace(/\.[a-z0-9]{2,5}$/i,'') || 'Pasted transcript', fileName: name, transcript: text, source:'paste', status:'summarising' });
+  await saveNote(n); openSheet(n.id);
+  if (settings().key) runSummary(n); else { n.status='needs-summary'; n.error='Add your Gemini key in Settings, then tap Summarise & tag.'; saveNote(n); refreshSheet(); }
+};
+$('backupBtn').onclick = ()=>{ const data = { app:'akshar-talk-script', version:1, exported: new Date().toISOString(), notes:[...notes.values()] };
+  download('akshar-talk-script-backup_' + new Date().toISOString().slice(0,10) + '.json', new Blob([JSON.stringify(data)], {type:'application/json'})); };
+$('restoreIn').onchange = async (e)=>{ const f = e.target.files[0]; e.target.value=''; if (!f) return;
+  try { const d = JSON.parse(await f.text()); let c = 0; for (const n of (d.notes||[])){ if (!n || !n.id || notes.has(n.id)) continue; n.hasAudio = false; if (!Array.isArray(n.tags)) n.tags=[]; await saveNote(n); c++; } toast(`Restored ${c} talk${c===1?'':'s'}`); }
+  catch(err){ toast('That file is not an Akshar Talk Script backup.'); } };
+async function storageInfo(){ try { if (navigator.storage && navigator.storage.estimate){ const e = await navigator.storage.estimate(); $('storageInfo').textContent = `Using ${fmtMB(e.usage||0)} of space on this device.`; } } catch(e){} }
+
+/* ================= install to home screen ================= */
+let deferredPrompt = null;
+const isStandalone = ()=> window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; showInstallBanner(); });
+window.addEventListener('appinstalled', ()=>{ deferredPrompt = null; $('installBanner').classList.add('hidden'); toast('Added to your home screen'); });
+function renderInstallHelp(el){
+  el.textContent = '';
+  if (isStandalone()){ el.append(h('p',{class:'note',style:'margin:0'},'✓ You are using the installed app.')); return; }
+  if (deferredPrompt){ el.append(h('button',{class:'btn small primary', onclick:async()=>{ deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(e){} deferredPrompt=null; renderInstallHelp(el); }}, 'Install app')); return; }
+  if (isIOS){ el.append(h('ol',{class:'steps'}, h('li',null,'Open this page in ', h('b',null,'Safari'), '.'), h('li',null,'Tap the ', h('b',null,'Share'), ' button (square with an arrow).'), h('li',null,'Tap ', h('b',null,'Add to Home Screen'), ', then ', h('b',null,'Add'), '.'))); return; }
+  el.append(h('ol',{class:'steps'}, h('li',null,'Open this page in ', h('b',null,'Chrome'), '.'), h('li',null,'Tap the ', h('b',null,'⋮'), ' menu.'), h('li',null,'Tap ', h('b',null,'Add to Home screen'), ' or ', h('b',null,'Install app'), '.')));
+}
+function showInstallBanner(){
+  if (isStandalone() || LS.get('installDismissed','0')==='1') return;
+  const b = $('installBanner'); b.textContent='';
+  b.append(h('b',null,'Add to home screen: '));
+  if (deferredPrompt) b.append(h('button',{class:'linkbtn', onclick:async()=>{ deferredPrompt.prompt(); try{ await deferredPrompt.userChoice; }catch(e){} deferredPrompt=null; b.classList.add('hidden'); }}, 'Install now'));
+  else if (isIOS) b.append('in Safari tap the Share button, then “Add to Home Screen”.');
+  else b.append('open the ⋮ menu and tap “Add to Home screen”.');
+  b.append(' ', h('button',{class:'linkbtn', style:'color:inherit;opacity:.7', onclick:()=>{ LS.set('installDismissed','1'); b.classList.add('hidden'); }}, 'Dismiss'));
+  b.classList.remove('hidden');
+}
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+/* ================= start ================= */
+(async ()=>{
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e){}
+  try { for (const n of await idb.all('notes')){ if (!Array.isArray(n.tags)) n.tags=[]; notes.set(n.id, n); } }
+  catch(e){ showErr('This browser is blocking storage, so talks cannot be saved. If you are in private browsing, switch to a normal tab.'); }
+  render(); checkKeyBanner(); showInstallBanner();
+  // resume anything that was interrupted
+  for (const n of notes.values()) if (n.hasAudio && (n.status==='queued' || n.status==='transcribing') && settings().key){ working.set(n.id,{label:'Resuming…',pct:0}); enqueue(()=>transcribeNote(n)); }
+  render();
+})();
+})();
+</script>
+</body>
+</html>
