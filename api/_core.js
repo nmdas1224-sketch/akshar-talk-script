@@ -49,9 +49,11 @@ export async function generate({ key, models, contents, cfg, deadline, fetchFn =
       const e = await readError(r); last = e;
       if (r.status === 400 && /API key not valid|API_KEY_INVALID/i.test(e.msg)) throw new Error('Your Gemini key was not accepted. Check it in Settings.');
       if (r.status === 400 && /thinking/i.test(e.msg) && !state.noThink.has(model)) { state.noThink.add(model); attempt--; continue; }
-      if (r.status === 429 && !e.zero && attempt < 3) {
+      if (r.status === 429) {
+        // A long wait means this model's daily free allowance is used up: move on to the next model.
+        if (e.zero || (e.retry || 0) > 90) { if (state.good === model) state.good = null; break; }
         const wait = Math.min(60, Math.ceil(e.retry || 15)) * 1000;
-        if (Date.now() + wait > deadline - 30000) throw Object.assign(new Error('Gemini free limit reached'), { timeout: true });
+        if (attempt >= 3 || Date.now() + wait > deadline - 30000) break;
         await sleep(wait); continue;
       }
       if (r.status >= 500 && attempt < 2) { await sleep(3000 * (attempt + 1)); continue; }
@@ -104,7 +106,7 @@ export async function runJob(payload, { deadline, fetchFn = fetch } = {}) {
     if (full.trim()) {
       try {
         const r = await generate({
-          key, models, fetchFn, state, deadline,
+          key, models: Array.isArray(payload.summaryModels) && payload.summaryModels.length ? payload.summaryModels : models, fetchFn, state: {}, deadline,
           contents: [{ role: 'user', parts: [{ text: payload.summaryPrompt.replace('{{TRANSCRIPT}}', full.slice(0, 400000)) }] }],
           cfg: Object.assign({ responseMimeType: 'application/json', maxOutputTokens: 4000 }, payload.summaryCfg || {}),
         });

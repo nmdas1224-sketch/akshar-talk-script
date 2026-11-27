@@ -298,7 +298,14 @@ async function shareOrDownload(filename, text){
 
 /* ================= settings ================= */
 const LS = { get(k,d){ try{ const v = localStorage.getItem('tl.'+k); return v==null?d:v; }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem('tl.'+k, v); }catch(e){} } };
-const MODELS = ['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-flash-latest','gemini-2.5-flash'];
+const MODELS = ['gemini-3.8-flash','gemini-3.6-flash','gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-flash-latest','gemini-2.5-flash'];
+// Summaries are text-only, so the lighter models (with bigger free allowances) go first.
+const SUMMARY_MODELS = ['gemini-3.5-flash-lite','gemini-3.1-flash-lite','gemini-3.6-flash','gemini-3.8-flash','gemini-flash-latest','gemini-2.5-flash'];
+// Models that hit their daily free limit are skipped until the time Google gave us.
+function exhausted(){ try { return JSON.parse(LS.get('exhausted','{}')) || {}; } catch(e){ return {}; } }
+function markExhausted(model, secs){ const x = exhausted(); x[model] = Date.now() + secs*1000; LS.set('exhausted', JSON.stringify(x)); }
+function usable(list){ const x = exhausted(), now = Date.now(); const ok = list.filter(m=>!(x[m] > now)); return ok.length ? ok : list; }
+function fmtWait(secs){ if (secs < 90) return Math.ceil(secs) + ' seconds'; if (secs < 5400) return 'about ' + Math.round(secs/60) + ' minutes'; return 'about ' + Math.round(secs/3600) + ' hours'; }
 const BASE = 'https://generativelanguage.googleapis.com';
 function settings(){ return { key: LS.get('key_gemini',''), lang: LS.get('glang','gu'), sumLang: LS.get('sumLang','en'), vocab: LS.get('vocab',''), room: LS.get('room','1')==='1' }; }
 function loadSettingsUI(){ const s = settings(); $('keyIn').value = s.key; $('langSel').value = s.lang; $('sumLang').value = s.sumLang; $('vocabIn').value = s.vocab; $('roomMode').checked = s.room; }
@@ -333,16 +340,17 @@ async function gError(r){
   const e = new Error(
     r.status === 400 && /API key not valid|API_KEY_INVALID/i.test(msg) ? 'Your Gemini key was not accepted. Check it in Settings.' :
     r.status === 403 ? 'Gemini refused the request: ' + (msg || 'permission denied') :
-    r.status === 429 ? 'Gemini free limit reached. ' + (retry ? `Try again in ${Math.ceil(retry)} seconds.` : 'Try again in a minute.') :
+    r.status === 429 ? 'Gemini free daily limit reached on every model. ' + (retry ? `Tap the button again in ${fmtWait(retry)}.` : 'Try again in a minute.') :
     'Gemini error ' + r.status + (msg ? ': ' + msg.slice(0, 200) : ''));
   e.status = r.status; e.retry = retry; e.zero = zero; e.badKey = /not accepted/.test(e.message);
   return e;
 }
 let goodModel = null; const noThink = new Set();
 // One generateContent call, trying the models in order and waiting out short rate limits.
-async function generateRaw(contents, cfg, onWait){
+async function generateRaw(contents, cfg, onWait, modelList){
   const key = needKey();
-  const models = goodModel ? [goodModel, ...MODELS.filter(m=>m!==goodModel)] : MODELS;
+  const base = usable(modelList || MODELS);
+  const models = goodModel && base.includes(goodModel) ? [goodModel, ...base.filter(m=>m!==goodModel)] : base;
   let lastErr = null;
   for (const model of models){
     for (let attempt = 0; attempt < 4; attempt++){
@@ -362,15 +370,19 @@ async function generateRaw(contents, cfg, onWait){
       if (e.badKey) throw e;
       if (r.status === 400 && /thinking/i.test(e.message) && !noThink.has(model)){ noThink.add(model); attempt--; continue; }
       if ((r.status === 403 || r.status === 404 || r.status === 400) && /file/i.test(e.message) && /not found|expired|permission|does not exist/i.test(e.message)){ e.fileGone = true; throw e; }
-      if (r.status === 429 && !e.zero && attempt < 3){ const w = Math.min(70, Math.ceil(e.retry || 20)); onWait && onWait(w); await sleep(w*1000); continue; }
-      if (r.status === 429 && !e.zero) throw e;
+      if (r.status === 429){
+        // Long waits mean the daily allowance for this model is used up: switch to the next model.
+        if (e.zero || (e.retry || 0) > 90){ markExhausted(model, e.retry || 3600); if (goodModel === model) goodModel = null; break; }
+        if (attempt < 3){ const w = Math.min(70, Math.ceil(e.retry || 20)); onWait && onWait(w); await sleep(w*1000); continue; }
+        break;
+      }
       if (r.status >= 500 && attempt < 2){ await sleep(4000*(attempt+1)); continue; }
       break;  // model not available on this key (404/400/403/limit 0): try the next one
     }
   }
   throw lastErr || new Error('Gemini is not available right now.');
 }
-async function generate(parts, cfg, onWait){ return (await generateRaw([{role:'user', parts}], cfg, onWait)).text; }
+async function generate(parts, cfg, onWait, modelList){ return (await generateRaw([{role:'user', parts}], cfg, onWait, modelList)).text; }
 
 // Upload audio with the Files API (works for files of any size up to 2 GB).
 async function uploadFile(blob, mime, name, onProgress){
@@ -548,7 +560,7 @@ function applySummary(n, r){
 async function summarise(note, progress){
   let text = (note.transcript || '').trim();
   if (text.length > 400000) text = text.slice(0, 400000);
-  const raw = await generate([{text: summaryPrompt(note, text)}], { responseMimeType:'application/json', maxOutputTokens: 4000 }, (w)=> progress && progress(`Gemini free limit reached, continuing in ${w}s…`));
+  const raw = await generate([{text: summaryPrompt(note, text)}], { responseMimeType:'application/json', maxOutputTokens: 4000 }, (w)=> progress && progress(`Gemini is busy, continuing in ${w}s…`), SUMMARY_MODELS);
   return summaryFromRaw(raw);
 }
 async function runSummary(n){
@@ -656,7 +668,7 @@ async function startCloudJob(n, fileRef){
   const todo = n.segs.map((sg, i)=>({sg, i})).filter(x=>!x.sg.done);
   if (!todo.length) return false;
   const payload = {
-    key: settings().key, models: MODELS, file: { uri: fileRef.uri, mimeType: fileRef.mimeType },
+    key: settings().key, models: usable(MODELS), summaryModels: usable(SUMMARY_MODELS), file: { uri: fileRef.uri, mimeType: fileRef.mimeType },
     sections: todo.map(({sg, i})=>({ i, from: sg.from, to: sg.to, prompt: sg.whole ? transcribePrompt(0) : rangePrompt(sg.from, sg.to) })),
     known: n.segs.filter(sg=>sg.done).map(sg=>({ from: sg.from, to: sg.to, text: sg.text })),
     summaryPrompt: summaryPrompt(n, '{{TRANSCRIPT}}')
@@ -1111,6 +1123,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.se
   // resume anything that was interrupted
   for (const n of notes.values()) if (n.hasAudio && (n.status==='queued' || n.status==='transcribing') && settings().key){ working.set(n.id,{label:'Resuming…',pct:0}); enqueue(()=>transcribeNote(n)); }
   if ([...notes.values()].some(n=>n.status === 'cloud')) pollJobs();
+  // finish summaries that failed earlier (e.g. a model's daily limit)
+  if (settings().key) for (const n of notes.values()) if (n.status === 'needs-summary' && n.transcript && !working.has(n.id)) runSummary(n);
   render();
 })();
 })();
